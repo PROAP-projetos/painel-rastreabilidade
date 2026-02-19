@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Consolidação de Ações - PDI UFT</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="brandbar">
+        <div class="brandbar-accent"></div>
+        <div class="brandbar-body">
+            <div class="brandbar-left">
+                <div class="brandmark" aria-hidden="true"><i class="bi bi-bank"></i></div>
+                <div class="brandbar-title">
+                    <div class="org">Universidade Federal do Tocantins</div>
+                    <div class="prod">Consolidação de Ações do PDI</div>
+                </div>
+            </div>
+            <div class="brandbar-right">
+                <button class="pill pill-toggle active" id="pill-acoes" type="button" aria-pressed="true" onclick="setModo('acoes')">
+                    <i class="bi bi-diagram-3"></i> Ações consolidadas
+                </button>
+                <button class="pill pill-toggle" id="pill-propostas" type="button" aria-pressed="false" onclick="setModo('propostas')">
+                    <i class="bi bi-journal-text"></i> Todas as propostas
+                </button>
+                <span class="pill pill-label" title="O painel permite rastrear propostas que contribuíram para ações consolidadas.">
+                    <i class="bi bi-link-45deg"></i> Rastreabilidade
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <div class="header">
+            <h1>Visão geral do painel</h1>
+            <div class="subtitle">Rastreabilidade e histórico de consolidação</div>
+            <div class="intro-grid">
+                <article class="intro-card">
+                    <h3><i class="bi bi-database"></i> Origem da base</h3>
+                    <p>O banco foi construído no processo participativo do PDI da UFT, com recebimento de propostas da comunidade interna e externa.</p>
+                </article>
+                <article class="intro-card">
+                    <h3><i class="bi bi-shield-check"></i> Transparência</h3>
+                    <p>Todas as propostas recebidas foram registradas. As vinculadas aparecem nas ações consolidadas e as demais permanecem preservadas na base.</p>
+                </article>
+                <article class="intro-card">
+                    <h3><i class="bi bi-check2-square"></i> Classificação</h3>
+                    <p>Quando uma contribuição foi descrita como tarefa operacional, a PROAP classificou como <strong>Categoria: Tarefa</strong> para manter a rastreabilidade.</p>
+                </article>
+            </div>
+            <details class="intro-glossario">
+                <summary><i class="bi bi-book"></i> Glossário rápido</summary>
+                <div class="intro-glossario-body">
+                    <span><strong>Ação consolidada:</strong> ação final do PDI.</span>
+                    <span><strong>Proposta:</strong> contribuição recebida da comunidade.</span>
+                    <span><strong>Tarefa:</strong> contribuição operacional classificada como tarefa.</span>
+                    <span><strong>Registrada:</strong> proposta preservada na base, com ou sem vínculo direto nesta etapa.</span>
+                </div>
+            </details>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-journal-text"></i></div>
+                <div class="stat-value" id="total-propostas">0</div>
+                <div class="stat-label">Propostas vinculadas</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-archive"></i></div>
+                <div class="stat-value" id="total-propostas-registradas">0</div>
+                <div class="stat-label">Propostas registradas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-diagram-3"></i></div>
+                <div class="stat-value" id="total-consolidadas">0</div>
+                <div class="stat-label">Ações Consolidadas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-bar-chart-line"></i></div>
+                <div class="stat-value" id="media-propostas">0</div>
+                <div class="stat-label">Média por Ação</div>
+            </div>
+        </div>
+        
+        <div class="filters-section">
+            <div class="filters-header">
+                <h3><i class="bi bi-funnel"></i> Filtros e busca</h3>
+                <button class="clear-filters" onclick="limparFiltros()">Limpar Filtros</button>
+            </div>
+            <div class="filters-grid">
+                <div class="filter-item">
+                    <label><i class="bi bi-search"></i> Buscar em propostas ou ações</label>
+                    <div class="search-wrap">
+                        <input type="text" id="search" placeholder="Digite um termo para buscar...">
+                        <button class="search-clear" type="button" onclick="limparBusca()" aria-label="Limpar busca" title="Limpar busca">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label><i class="bi bi-geo-alt"></i> Origem da proposta</label>
+                    <select id="filter-origem">
+                        <option value="">Todas as Origens</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label><i class="bi bi-person"></i> Responsável</label>
+                    <select id="filter-responsavel">
+                        <option value="">Todos os Responsáveis</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label><i class="bi bi-check2-square"></i> Tipo de registro</label>
+                    <select id="filter-tarefa">
+                        <option value="">Ações e tarefas</option>
+                        <option value="acao">Somente ações</option>
+                        <option value="tarefa">Somente tarefas</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label><i class="bi bi-sort-down"></i> Ordenar por</label>
+                    <select id="sort-by">
+                        <option value="propostas-desc">Mais Propostas</option>
+                        <option value="propostas-asc">Menos Propostas</option>
+                        <option value="id-asc">ID (Crescente)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-bar" aria-live="polite">
+            <div class="results-left">
+                <div class="results-chip">
+                    <i class="bi bi-diagram-3"></i>
+                    Ações consolidadas: <strong id="itens-encontrados">0</strong>
+                </div>
+                <div class="results-chip">
+                    <i class="bi bi-journal-text"></i>
+                    Propostas: <strong id="propostas-encontradas">0</strong>
+                </div>
+            </div>
+            <div class="filters-active" id="filtros-ativos">Sem filtros ativos.</div>
+        </div>
+        
+        <div class="consolidadas-container" id="consolidadas-container">
+            <div class="loading">Carregando dados...</div>
+        </div>
+
+        <footer class="panel-footer" aria-label="Créditos do painel">
+            Painel desenvolvido pelos estagiários da PROAP • UFT • 2026
+        </footer>
+    </div>
+    
+     <script src="painel_consolidacao.js"></script>
+</body>
+</html>
