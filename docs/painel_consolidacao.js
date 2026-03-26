@@ -1,5 +1,5 @@
 // Caminho padrão do JSON (HTML fica em /ui e o JSON em /json).
-const DATA_URL = 'acoes_consolidadas_v19.json';
+const DATA_URL = 'json_teste/acoes_consolidadas_v19.json';
 const HTML_FILE = (typeof window !== 'undefined' && window.location && window.location.pathname)
     ? (window.location.pathname.split('/').pop() || 'painel_consolidacao_final_arrumado.html')
     : 'painel_consolidacao_final_arrumado.html';
