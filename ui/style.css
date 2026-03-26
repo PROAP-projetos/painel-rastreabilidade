@@ -913,3 +913,215 @@
                 margin-top: 20px;
             }
         }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MARCADORES — badges + popup INEP / iESGo
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Row que contém os badges e o popup */
+.marc-badges-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 7px;
+    position: relative;
+}
+
+/* ── Badges ─────────────────────────────────────────────────────────────── */
+.marc-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: box-shadow 0.15s, transform 0.15s, background 0.15s;
+    user-select: none;
+    white-space: nowrap;
+}
+.marc-badge:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.14);
+    transform: translateY(-1px);
+}
+
+.marc-badge-inep  { background:#e8f0fe; color:#1a56db; border-color:#bad0ff; }
+.marc-badge-inep:hover  { background:#d0e3ff; }
+
+.marc-badge-iesgo { background:#e6f4ea; color:#1e7e34; border-color:#a8d5b3; }
+.marc-badge-iesgo:hover { background:#ceead6; }
+
+.marc-badge-extra {
+    background:#fff8e1; color:#8a6200; border-color:#ffd54f;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* ── Popup ──────────────────────────────────────────────────────────────── */
+.marc-popup {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    z-index: 9999;
+    width: min(640px, 92vw);
+    filter: drop-shadow(0 8px 28px rgba(15,23,42,.22));
+    /* seta */
+}
+.marc-popup::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 22px;
+    border: 8px solid transparent;
+    border-bottom-color: #1e293b;
+    border-top: 0;
+}
+.marc-popup-open {
+    display: block;
+    animation: marcPopupIn 0.18s ease;
+}
+@keyframes marcPopupIn {
+    from { opacity:0; transform:translateY(-6px); }
+    to   { opacity:1; transform:translateY(0);    }
+}
+
+.marc-popup-inner {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 16px 18px 18px;
+    color: #f1f5f9;
+    max-height: 72vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #475569 transparent;
+    position: relative;
+}
+
+.marc-popup-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: rgba(255,255,255,0.08);
+    border: none;
+    color: #94a3b8;
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.15s, color 0.15s;
+}
+.marc-popup-close:hover {
+    background: rgba(255,255,255,0.15);
+    color: #f1f5f9;
+}
+
+/* ── Seções internas ────────────────────────────────────────────────────── */
+.marc-popup-section {
+    margin-bottom: 18px;
+}
+.marc-popup-section:last-child { margin-bottom: 0; }
+
+.marc-popup-section-title {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.marc-title-inep  { background: rgba(26,86,219,.25);  color: #93c5fd; }
+.marc-title-iesgo { background: rgba(30,126,52,.25);  color: #86efac; }
+.marc-title-extra { background: rgba(138,98,0,.25);   color: #fcd34d; }
+
+/* Item (um indicador INEP ou uma questão iESGo) */
+.marc-popup-item {
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-left: 3px solid rgba(255,255,255,0.1);
+}
+.marc-popup-item:last-child { margin-bottom: 0; }
+
+.marc-popup-item-code {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 3px;
+}
+.marc-popup-item-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 5px;
+}
+.marc-popup-item-text {
+    font-size: 12px;
+    color: #cbd5e1;
+    line-height: 1.55;
+}
+
+/* Sub-itens (letras A, B, C… do iESGo) */
+.marc-popup-item-itens {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+}
+.marc-popup-subitem {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    font-size: 12px;
+    color: #cbd5e1;
+    line-height: 1.5;
+}
+.marc-popup-subitem-letra {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 10px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    margin-top: 1px;
+}
+.marc-popup-subitem-texto {
+    flex: 1;
+}
+
+/* ── Responsivo ─────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .marc-popup {
+        left: 50%;
+        transform: translateX(-50%);
+        width: 95vw;
+    }
+    .marc-popup::before {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    .marc-popup-open {
+        transform: translateX(-50%);
+    }
+}
