@@ -1,5 +1,5 @@
 // Caminho padrão do JSON (HTML fica em /ui e o JSON em /json).
-const DATA_URL = 'json_teste/acoes_consolidadas_v19.json';
+const DATA_URL = 'json_teste/acoes_consolidadas_v20.json';
 const HTML_FILE = (typeof window !== 'undefined' && window.location && window.location.pathname)
     ? (window.location.pathname.split('/').pop() || 'painel_consolidacao_final_arrumado.html')
     : 'painel_consolidacao_final_arrumado.html';
@@ -512,12 +512,15 @@ async function inicializar() {
 function popularFiltros() {
     const origens = new Set();
     const responsaveis = new Map();
+    const eixos = new Set();
     
     dados.forEach(consolidada => {
         consolidada.propostas.forEach(prop => {
             getOrigensProposta(prop).forEach(o => { if (o) origens.add(o); });
         });
         getResponsaveisConsolidada(consolidada).forEach(r => adicionarResponsavelDedupe(responsaveis, r));
+        const eixo = getEixoPDI(consolidada);
+        if (eixo) eixos.add(eixo);
     });
 
     (Array.isArray(todasPropostas) ? todasPropostas : []).forEach(p => {
@@ -532,6 +535,17 @@ function popularFiltros() {
         option.textContent = origem;
         selectOrigem.appendChild(option);
     });
+
+    const selectEixo = getFiltroEixoEl();
+    if (selectEixo) {
+        selectEixo.options.length = 1;
+        Array.from(eixos).sort().forEach(eixo => {
+            const option = document.createElement('option');
+            option.value = eixo;
+            option.textContent = eixo;
+            selectEixo.appendChild(option);
+        });
+    }
     
     const selectResponsavel = getFiltroResponsavelEl();
     if (selectResponsavel) selectResponsavel.options.length = 1;
@@ -580,7 +594,8 @@ function atualizarEstatisticas() {
         const origemFiltro = document.getElementById('filter-origem')?.value || '';
         const responsavelFiltro = getFiltroResponsavelEl()?.value || '';
         const tarefaFiltro = getFiltroTarefaEl()?.value || '';
-        const temFiltrosAtivos = Boolean(searchValue || origemFiltro || responsavelFiltro || tarefaFiltro);
+        const eixoFiltroAtivo = getFiltroEixoEl()?.value || '';
+        const temFiltrosAtivos = Boolean(searchValue || origemFiltro || responsavelFiltro || tarefaFiltro || eixoFiltroAtivo);
 
         propostasEncontradasEl.textContent = (modoVisualizacao === 'propostas')
             ? String(dados.length)
@@ -613,6 +628,7 @@ function atualizarIndicadoresUI() {
     const origemFiltro = document.getElementById('filter-origem')?.value || '';
     const responsavelFiltro = getFiltroResponsavelEl()?.value || '';
     const tarefaFiltro = getFiltroTarefaEl()?.value || '';
+    const eixoFiltro = getFiltroEixoEl()?.value || '';
 
     if (clearBtn) {
         const ativo = Boolean(searchValue);
@@ -625,6 +641,7 @@ function atualizarIndicadoresUI() {
     const partes = [];
     if (searchValue) partes.push(`<strong>Busca:</strong> “${escapeHtml(searchValue)}”`);
     if (origemFiltro) partes.push(`<strong>Origem:</strong> ${escapeHtml(origemFiltro)}`);
+    if (eixoFiltro) partes.push(`<strong>Eixo:</strong> ${escapeHtml(eixoFiltro)}`);
     if (responsavelFiltro) partes.push(`<strong>Responsável:</strong> ${escapeHtml(responsavelFiltro)}`);
     if (tarefaFiltro) partes.push(`<strong>Tipo:</strong> ${tarefaFiltro === 'tarefa' ? 'Somente tarefas' : 'Somente ações'}`);
 
@@ -695,8 +712,29 @@ function formatarLista(valores, maxItens = 3) {
 }
 
 function getOrigensProposta(proposta) {
-    if (Array.isArray(proposta && proposta.origens) && proposta.origens.length > 0) return proposta.origens;
-    return proposta && proposta.origem ? [proposta.origem] : [];
+    // 1. Pega os dados brutos da proposta
+    let listaBase = [];
+    if (Array.isArray(proposta && proposta.origens) && proposta.origens.length > 0) {
+        listaBase = proposta.origens;
+    } else if (proposta && proposta.origem) {
+        listaBase = [proposta.origem];
+    }
+
+    // 2. Quebra as strings sempre que encontrar vírgula, barra ou ponto-e-vírgula
+    const origensSeparadas = [];
+    listaBase.forEach(item => {
+        const partes = String(item || '').split(/[\/;,]+/g); 
+        
+        // 3. Limpa os espaços e guarda apenas valores únicos
+        partes.forEach(parte => {
+            const limpo = parte.trim();
+            if (limpo && !origensSeparadas.includes(limpo)) {
+                origensSeparadas.push(limpo);
+            }
+        });
+    });
+
+    return origensSeparadas;
 }
 
 function getResponsaveisProposta(proposta) {
@@ -723,6 +761,14 @@ function getFiltroResponsavelEl() {
 
 function getFiltroTarefaEl() {
     return document.getElementById('filter-tarefa');
+}
+
+function getFiltroEixoEl() {
+    return document.getElementById('filter-eixo');
+}
+
+function getEixoPDI(consolidada) {
+    return (consolidada && consolidada.eixo_pdi) ? String(consolidada.eixo_pdi).trim() : '';
 }
 
 function getOcorrenciasProposta(proposta) {
@@ -1131,6 +1177,7 @@ function aplicarFiltros() {
     const origemFiltro = document.getElementById('filter-origem').value;
     const responsavelFiltro = getFiltroResponsavelEl()?.value || '';
     const tarefaFiltro = getFiltroTarefaEl()?.value || '';
+    const eixoFiltro = getFiltroEixoEl()?.value || '';
     const sortBy = document.getElementById('sort-by').value;
     const responsavelFiltroKey = responsavelFiltro ? normalizarChave(responsavelFiltro) : '';
     
@@ -1139,6 +1186,12 @@ function aplicarFiltros() {
 
         if (origemFiltro) {
             lista = lista.filter(p => getOrigensProposta(p).includes(origemFiltro));
+        }
+        if (eixoFiltro) {
+            const eixoAcaoIds = new Set(
+                dados.filter(c => getEixoPDI(c) === eixoFiltro).map(c => c.id)
+            );
+            lista = lista.filter(p => p.acao_consolidada_id != null && eixoAcaoIds.has(p.acao_consolidada_id));
         }
         if (responsavelFiltro) {
             lista = lista.filter(p => getResponsaveisProposta(p).some(r => normalizarChave(r) === responsavelFiltroKey));
@@ -1228,6 +1281,9 @@ function aplicarFiltros() {
     if (tarefaFiltro) {
         dadosFiltrados = dadosFiltrados.filter(c => c.propostas.length > 0);
     }
+    if (eixoFiltro) {
+        dadosFiltrados = dadosFiltrados.filter(c => getEixoPDI(c) === eixoFiltro);
+    }
     
     switch(sortBy) {
         case 'propostas-desc':
@@ -1251,6 +1307,8 @@ function aplicarFiltros() {
 function limparFiltros() {
     document.getElementById('search').value = '';
     document.getElementById('filter-origem').value = '';
+    const filtroEixoEl = getFiltroEixoEl();
+    if (filtroEixoEl) filtroEixoEl.value = '';
     const filtroResponsavelEl = getFiltroResponsavelEl();
     if (filtroResponsavelEl) filtroResponsavelEl.value = '';
     const filtroTarefaEl = getFiltroTarefaEl();
@@ -1262,6 +1320,8 @@ function limparFiltros() {
 // Event listeners
 document.getElementById('search').addEventListener('input', aplicarFiltros);
 document.getElementById('filter-origem').addEventListener('change', aplicarFiltros);
+const filtroEixoEl = getFiltroEixoEl();
+if (filtroEixoEl) filtroEixoEl.addEventListener('change', aplicarFiltros);
 const filtroResponsavelEl = getFiltroResponsavelEl();
 if (filtroResponsavelEl) filtroResponsavelEl.addEventListener('change', aplicarFiltros);
 const filtroTarefaEl = getFiltroTarefaEl();
