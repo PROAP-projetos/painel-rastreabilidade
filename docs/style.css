@@ -977,7 +977,7 @@
     content: '';
     position: absolute;
     top: -8px;
-    left: 22px;
+    left: var(--seta-pos, 50%); /*mudança aqui*/
     border: 8px solid transparent;
     border-bottom-color: #1e293b;
     border-top: 0;

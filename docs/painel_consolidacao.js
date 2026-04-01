@@ -11,6 +11,7 @@ let dadosCarregados = false;
 let modoVisualizacao = 'acoes'; // 'acoes' | 'propostas'
 let todasPropostas = []; // visão unificada para transparência
 let metaDados = null;
+let propostasAvulsasGlobais = []; // mudei aqui
 
 function limparPopupsOrfaos() {
     // Remove os popups que foram teleportados para o body para evitar lixo de memória ao pesquisar
@@ -59,6 +60,16 @@ function extrairListaDoJson(json) {
     metaDados = (json && typeof json === 'object' && !Array.isArray(json) && json.meta && typeof json.meta === 'object')
         ? json.meta
         : null;
+        
+    // === LÓGICA RESTAURADA: Capturar propostas soltas na raiz do JSON ===
+    if (json && !Array.isArray(json)) {
+        // Tenta achar nomes comuns de listas de propostas soltas no seu banco
+        propostasAvulsasGlobais = json.propostas_registradas || json.propostas_sem_acao || json.propostas_sem_vinculo || json.propostas_avulsas || [];
+    } else {
+        propostasAvulsasGlobais = [];
+    }
+    // =====================================================================
+
     if (Array.isArray(json)) return json;
     if (json && Array.isArray(json.acoes)) return json.acoes;
     if (json && Array.isArray(json.dados)) return json.dados;
@@ -105,6 +116,22 @@ function setDados(lista) {
         dados = construirConsolidadasDePropostas(todasPropostas);
     } else {
         todasPropostas = extrairTodasPropostasDaBase(base);
+        
+        // === LÓGICA RESTAURADA: Injetar as propostas soltas (sem ação) na lista geral ===
+        // Verifica se a variável global existe e tem itens
+        if (typeof propostasAvulsasGlobais !== 'undefined' && Array.isArray(propostasAvulsasGlobais) && propostasAvulsasGlobais.length > 0) {
+            propostasAvulsasGlobais.forEach(p => {
+                todasPropostas.push({
+                    ...p,
+                    status: 'registrada', // Garante a bolinha amarela "Registrada"
+                    acao_consolidada_id: null,
+                    acao_consolidada: null,
+                    categoriaTarefa: Boolean(p.categoriaTarefa) || isTarefaNoFimTexto(p.texto)
+                });
+            });
+        }
+        // =================================================================================
+
         const dadosDeduplicados = deduplicarConsolidadas(base);
         dadosDeduplicados.forEach(c => {
             c.propostas = deduplicarPropostasPorTexto(c.propostas);
@@ -910,20 +937,27 @@ function renderMarcadoresPopup(consolidada) {
     ` : '';
 
     return `
-        <div class="marc-badges-row" onclick="event.stopPropagation()">
-            ${temInep  ? `<div class="marc-badge marc-badge-inep" onclick="toggleMarcPopup(event, ${consolidada.id})"><i class="bi bi-mortarboard"></i> INEP</div>`   : ''}
-            ${temIesgo ? `<div class="marc-badge marc-badge-iesgo" onclick="toggleMarcPopup(event, ${consolidada.id})"><i class="bi bi-clipboard-check"></i> iESGo</div>` : ''}
-            ${temMarc  ? `<div class="marc-badge marc-badge-extra"><i class="bi bi-bookmark"></i> ${escapeHtml(consolidada.marcadores)}</div>` : ''}
-            <div class="marc-popup" id="marc-popup-${consolidada.id}">
-                <div class="marc-popup-inner">
-                    <button class="marc-popup-close" onclick="fecharMarcPopup(event, ${consolidada.id})" title="Fechar">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                    ${inepHtml}${iesgoHtml}${marcHtml}
+            <div class="marc-badges-row" onclick="event.stopPropagation()">
+                ${temInep  ? `<div class="marc-badge marc-badge-inep" onclick="toggleMarcPopup(event, ${consolidada.id}, 'inep')"><i class="bi bi-mortarboard"></i> INEP</div>`   : ''}
+                ${temIesgo ? `<div class="marc-badge marc-badge-iesgo" onclick="toggleMarcPopup(event, ${consolidada.id}, 'iesgo')"><i class="bi bi-clipboard-check"></i> iESGo</div>` : ''}
+                ${temMarc  ? `<div class="marc-badge marc-badge-extra" onclick="toggleMarcPopup(event, ${consolidada.id}, 'extra')"><i class="bi bi-bookmark"></i> ${escapeHtml(consolidada.marcadores)}</div>` : ''}
+                <div class="marc-popup" id="marc-popup-${consolidada.id}">
+                    <div class="marc-popup-inner">
+                        <div style="display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 12px; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                            <span style="font-size: 12px; color: #64748b; margin-right: auto;" title="Acessibilidade">
+                                <i class="bi bi-universal-access-circle"></i> Texto
+                            </span>
+                            <button type="button" onclick="mudarTamanhoFontePopup(event, ${consolidada.id}, -1)" title="Diminuir texto" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer; padding:2px 8px; font-weight:bold; color:#475569; font-size:13px; transition:0.2s;">A-</button>
+                            <button type="button" onclick="mudarTamanhoFontePopup(event, ${consolidada.id}, 1)" title="Aumentar texto" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer; padding:2px 8px; font-weight:bold; color:#475569; font-size:14px; transition:0.2s;">A+</button>
+                            <button class="marc-popup-close" onclick="fecharMarcPopup(event, ${consolidada.id})" title="Fechar" style="margin-left: 8px; position: relative; top: 0; right: 0;">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        ${inepHtml}${iesgoHtml}${marcHtml}
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
+        `;
 }
 
 function fecharMarcPopup(event, id) {
@@ -932,74 +966,104 @@ function fecharMarcPopup(event, id) {
     if (popup) popup.classList.remove('marc-popup-open');
 }
 
-function toggleMarcPopup(event, id) {
+function toggleMarcPopup(event, id, tipoClicado) {
     event.stopPropagation();
     
-    // Fecha todos os outros primeiro
-    document.querySelectorAll('.marc-popup-open').forEach(p => {
-        if (p.id !== 'marc-popup-' + id) p.classList.remove('marc-popup-open');
-    });
+    // Identifica o botão exato que foi clicado
+    const badge = event.target.closest('.marc-badge');
+    if (!badge) return;
 
     const popup = document.getElementById('marc-popup-' + id);
     if (!popup) return;
 
     const jaAberto = popup.classList.contains('marc-popup-open');
+    const tipoAtualAberto = popup.getAttribute('data-tipo-aberto');
 
-    // Teleporta o popup para o body para evitar bug de z-index/transform do pai
+    // 1. Fecha os popups de outras ações consolidadas primeiro
+    document.querySelectorAll('.marc-popup-open').forEach(p => {
+        if (p.id !== 'marc-popup-' + id) {
+            p.classList.remove('marc-popup-open');
+            p.removeAttribute('data-tipo-aberto');
+        }
+    });
+
+    // 2. Se o usuário clicar no MESMO botão que já está aberto, apenas fecha ele
+    if (jaAberto && tipoAtualAberto === tipoClicado) { 
+        popup.classList.remove('marc-popup-open'); 
+        popup.removeAttribute('data-tipo-aberto');
+        return; 
+    }
+
+    // 3. Teleporta o popup para o body para evitar que o CSS do pai corte ele
     if (popup.parentElement !== document.body) {
         document.body.appendChild(popup);
     }
 
-    if (jaAberto) { 
-        popup.classList.remove('marc-popup-open'); 
-        return; 
-    }
+    // 4. MÁGICA DO CONTEÚDO: Oculta tudo e mostra só o que foi clicado
+    const secInep = popup.querySelector('.marc-title-inep')?.closest('.marc-popup-section');
+    const secIesgo = popup.querySelector('.marc-title-iesgo')?.closest('.marc-popup-section');
+    const secExtra = popup.querySelector('.marc-title-extra')?.closest('.marc-popup-section');
 
-    // Identifica o botão com segurança
-    const badge = event.target.closest('.marc-badge');
-    if (!badge) return;
+    if (secInep) secInep.style.display = (tipoClicado === 'inep') ? 'block' : 'none';
+    if (secIesgo) secIesgo.style.display = (tipoClicado === 'iesgo') ? 'block' : 'none';
+    if (secExtra) secExtra.style.display = (tipoClicado === 'extra') ? 'block' : 'none';
     
-    // FORÇA a posição para absoluta no JS para ele rolar junto com a página
+    // Salva na memória do HTML qual aba está aberta agora
+    popup.setAttribute('data-tipo-aberto', tipoClicado);
+
+    // 5. MÁGICA DA POSIÇÃO E DA SETINHA
     popup.style.position = 'absolute';
+
+    // Mede o tamanho do balão invisível para podermos calcular o meio
+    popup.style.display = 'block';
+    popup.style.visibility = 'hidden';
+    const popupH = popup.offsetHeight;
+    const popupW = popup.offsetWidth;
 
     const rect = badge.getBoundingClientRect();
     const scrollTop = window.scrollY || document.documentElement.scrollTop;
     const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
     
-    const popupW = Math.min(620, window.innerWidth * 0.92);
-    
-    // Calcula a posição horizontal (somando o scroll)
-    let left = rect.left + scrollLeft;
+    // Calcula a posição horizontal para tentar alinhar o meio do balão com o meio do botão
+    let left = rect.left + scrollLeft + (rect.width / 2) - (popupW / 2);
+
+    // Proteções de tela: não deixa o balão vazar pela direita nem pela esquerda
     if (left + popupW > window.innerWidth - 8 + scrollLeft) {
         left = window.innerWidth - popupW - 8 + scrollLeft;
     }
-    if (left < 8 + scrollLeft) left = 8 + scrollLeft;
+    if (left < 8 + scrollLeft) {
+        left = 8 + scrollLeft;
+    }
 
-    // Precisamos medir a altura do balão rapidamente caso ele precise abrir pra cima
-    popup.style.display = 'block';
-    popup.style.visibility = 'hidden';
-    const popupH = popup.offsetHeight;
-    popup.style.display = '';
-    popup.style.visibility = '';
+    // --- CALCULA A POSIÇÃO DA SETINHA ---
+    // Acha o centro absoluto do botão na tela
+    const centroDoBotao = rect.left + scrollLeft + (rect.width / 2);
+    // Subtrai de onde a caixa do balão começou para descobrir o valor interno da seta
+    const posicaoSetaDentroDoPopup = centroDoBotao - left;
+    
+    // Cria a variável CSS "--seta-pos" que o seu arquivo style.css vai usar
+    popup.style.setProperty('--seta-pos', posicaoSetaDentroDoPopup + 'px');
+    // ------------------------------------
 
     const spaceBelow = window.innerHeight - rect.bottom;
     
-    // Limpa configurações de top/bottom antigas
+    // Limpa configurações de cima/baixo antigas
     popup.style.top = '';
     popup.style.bottom = '';
     
-    // Define a posição vertical exata somando o quanto a página já rolou (scrollTop)
+    // Posiciona verticalmente (Abre pra cima se não couber embaixo)
     if (spaceBelow < popupH + 20 && rect.top > spaceBelow) {
-        // Abre para cima grudado no botão
         popup.style.top = (rect.top + scrollTop - popupH - 8) + 'px';
         popup.classList.add('marc-popup-acima');
     } else {
-        // Abre para baixo grudado no botão
         popup.style.top = (rect.bottom + scrollTop + 8) + 'px';
         popup.classList.remove('marc-popup-acima');
     }
     
+    // Aplica as posições finais e torna visível novamente!
     popup.style.left = left + 'px';
+    popup.style.display = '';
+    popup.style.visibility = '';
     popup.classList.add('marc-popup-open');
 }
 
@@ -1315,6 +1379,41 @@ function limparFiltros() {
     if (filtroTarefaEl) filtroTarefaEl.value = '';
     document.getElementById('sort-by').value = 'propostas-desc';
     aplicarFiltros();
+}
+
+function mudarTamanhoFontePopup(event, id, direcao) {
+    // Evita que o clique feche o card por engano
+    event.stopPropagation(); 
+    
+    const container = document.querySelector(`#marc-popup-${id} .marc-popup-inner`);
+    if (!container) return;
+
+    // Seleciona as classes exatas onde estão os textos do seu popup para não quebrar espaçamentos
+    const seletoresDeTexto = [
+        '.marc-popup-section-title', 
+        '.marc-popup-item-code', 
+        '.marc-popup-item-name', 
+        '.marc-popup-item-text', 
+        '.marc-popup-subitem-letra', 
+        '.marc-popup-subitem-texto'
+    ].join(', ');
+
+    const elementos = container.querySelectorAll(seletoresDeTexto);
+
+    elementos.forEach(el => {
+        // Descobre o tamanho atual do texto que o navegador está renderizando (vindo do seu CSS)
+        const estilo = window.getComputedStyle(el);
+        const tamanhoAtual = parseFloat(estilo.fontSize);
+
+        // Se direção for 1 (A+), aumenta 10%. Se for -1 (A-), diminui 10%
+        let novoTamanho = direcao > 0 ? tamanhoAtual * 1.1 : tamanhoAtual / 1.1;
+
+        // Limites para evitar que o texto fique ilegível ou quebre a tela (min: 10px, max: 26px)
+        if (novoTamanho >= 10 && novoTamanho <= 26) {
+            el.style.fontSize = novoTamanho + 'px';
+            el.style.lineHeight = '1.4'; // Ajusta a entrelinha para o texto grande não encavalar
+        }
+    });
 }
 
 // Event listeners
