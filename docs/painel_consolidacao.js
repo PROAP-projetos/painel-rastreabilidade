@@ -250,6 +250,27 @@ function normalizarChave(valor) {
         .replace(/[.\s]+$/g, '');
 }
 
+function normalizarTextoBusca(valor) {
+    return String(valor || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim()
+        .replace(/\s+/g, ' ');
+}
+
+function textoContemBusca(valor, termoBuscaNorm, termoBuscaCompacto) {
+    const textoNorm = normalizarTextoBusca(valor);
+    if (!textoNorm || !termoBuscaNorm) return false;
+    if (textoNorm.includes(termoBuscaNorm)) return true;
+
+    // Permite casar termos digitados sem separadores com dados que venham quebrados no JSON.
+    if (!termoBuscaCompacto || termoBuscaCompacto.length < 3) return false;
+    const textoCompacto = textoNorm.replace(/\s+/g, '');
+    return textoCompacto.includes(termoBuscaCompacto);
+}
+
 function normalizarAcaoTexto(texto) {
     let s = normalizarChave(texto);
     s = s.replace(/[.\s]*\(?\s*tarefa\s*\)?\s*$/g, '').trim().replace(/\s+/g, ' ');
@@ -1237,7 +1258,8 @@ function aplicarFiltros() {
     if (!dadosCarregados) return;
     const searchRaw = (document.getElementById('search').value || '').trim();
     termoBuscaAtual = searchRaw;
-    const searchTerm = searchRaw.toLowerCase();
+    const searchTerm = normalizarTextoBusca(searchRaw);
+    const searchTermCompacto = searchTerm.replace(/\s+/g, '');
     const origemFiltro = document.getElementById('filter-origem').value;
     const responsavelFiltro = getFiltroResponsavelEl()?.value || '';
     const tarefaFiltro = getFiltroTarefaEl()?.value || '';
@@ -1268,10 +1290,10 @@ function aplicarFiltros() {
 
         if (searchTerm) {
             lista = lista.filter(p =>
-                (p.texto && p.texto.toLowerCase().includes(searchTerm)) ||
-                (p.responsavel && String(p.responsavel).toLowerCase().includes(searchTerm)) ||
-                getOrigensProposta(p).some(o => String(o).toLowerCase().includes(searchTerm)) ||
-                (p.acao_consolidada && String(p.acao_consolidada).toLowerCase().includes(searchTerm))
+                textoContemBusca(p.texto, searchTerm, searchTermCompacto) ||
+                textoContemBusca(p.responsavel, searchTerm, searchTermCompacto) ||
+                getOrigensProposta(p).some(o => textoContemBusca(o, searchTerm, searchTermCompacto)) ||
+                textoContemBusca(p.acao_consolidada, searchTerm, searchTermCompacto)
             );
         }
 
@@ -1300,8 +1322,8 @@ function aplicarFiltros() {
     dadosFiltrados = dados.map(consolidada => {
         let propostas = [...consolidada.propostas];
         const acaoMatches = Boolean(searchTerm) && (
-            (consolidada.acao && consolidada.acao.toLowerCase().includes(searchTerm)) ||
-            (consolidada.responsavel && String(consolidada.responsavel).toLowerCase().includes(searchTerm))
+            textoContemBusca(consolidada.acao, searchTerm, searchTermCompacto) ||
+            textoContemBusca(consolidada.responsavel, searchTerm, searchTermCompacto)
         );
         
         if (origemFiltro) {
@@ -1310,11 +1332,11 @@ function aplicarFiltros() {
         
         if (searchTerm && !acaoMatches) {
             propostas = propostas.filter(p => 
-                p.texto.toLowerCase().includes(searchTerm) ||
-                consolidada.acao.toLowerCase().includes(searchTerm) ||
-                (consolidada.responsavel && String(consolidada.responsavel).toLowerCase().includes(searchTerm)) ||
-                (p.responsavel && p.responsavel.toLowerCase().includes(searchTerm)) ||
-                getOrigensProposta(p).some(o => String(o).toLowerCase().includes(searchTerm))
+                textoContemBusca(p && p.texto, searchTerm, searchTermCompacto) ||
+                textoContemBusca(consolidada && consolidada.acao, searchTerm, searchTermCompacto) ||
+                textoContemBusca(consolidada && consolidada.responsavel, searchTerm, searchTermCompacto) ||
+                textoContemBusca(p && p.responsavel, searchTerm, searchTermCompacto) ||
+                getOrigensProposta(p).some(o => textoContemBusca(o, searchTerm, searchTermCompacto))
             );
         }
 
