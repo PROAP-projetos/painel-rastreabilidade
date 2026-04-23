@@ -16,7 +16,7 @@ const INLINE_TEXT_SCALE_MIN = 0.9;
 const INLINE_TEXT_SCALE_MAX = 1.35;
 const INLINE_TEXT_SCALE_STEP = 0.05;
 const TOUR_STORAGE_KEY = 'painel-lite-tour-v1';
-const TOUR_STEP_DURATION = 2600;
+const TOUR_STEP_DURATION = 4500;
 const TOUR_FORCE_QUERY_PARAM = 'tour';
 
 let tourPrimeiraEntradaTimer = null;
@@ -489,6 +489,12 @@ function marcarTourPrimeiraEntradaComoVisto() {
 }
 
 function encerrarTourPrimeiraEntrada(marcarVisto = true) {
+    _tourClearType();
+    ['search', 'filter-numero-acao'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value) { el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); }
+    });
+
     if (tourPrimeiraEntradaTimer) {
         clearTimeout(tourPrimeiraEntradaTimer);
         tourPrimeiraEntradaTimer = null;
@@ -528,8 +534,8 @@ function criarTourPrimeiraEntrada() {
             <p data-tour-text></p>
             <div class="lite-tour-progress" aria-hidden="true"><span data-tour-progress></span></div>
             <div class="lite-tour-footer">
-                <i class="bi bi-lightning-charge-fill"></i>
-                O tour avança sozinho e desaparece no fim.
+                <i class="bi bi-cursor-fill"></i>
+                Avança automaticamente • clique em Pular para fechar.
             </div>
         </section>
     `;
@@ -571,36 +577,84 @@ function obterAlvoTour(selector) {
     return { elemento, rect };
 }
 
+// ── Tour: digitação animada num input ─────────────────────────────────────
+let _tourTypeTimer = null;
+function _tourClearType() {
+    if (_tourTypeTimer) { clearTimeout(_tourTypeTimer); _tourTypeTimer = null; }
+}
+function _tourTypeText(input, texto, delay = 80) {
+    _tourClearType();
+    if (!input) return;
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    let i = 0;
+    const next = () => {
+        if (!tourPrimeiraEntradaOverlay) return; // tour encerrado
+        if (i >= texto.length) return;
+        input.value = texto.slice(0, ++i);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        _tourTypeTimer = setTimeout(next, delay);
+    };
+    _tourTypeTimer = setTimeout(next, 420);
+}
+function _tourClearInputs() {
+    _tourClearType();
+    ['search', 'filter-numero-acao'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value) { el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); }
+    });
+}
+
 function atualizarTourPrimeiraEntrada(index) {
     if (!tourPrimeiraEntradaOverlay) return;
 
     const passos = [
         {
-            selector: '.brandbar-right .pill-lite-badge',
-            titulo: 'Abertura do painel',
-            texto: 'A entrada começa aqui: a identidade da versão lite, com leitura limpa e foco total no conteúdo.'
-        },
-        {
             selector: '.lite-stats-row',
-            titulo: 'Leitura de cenário',
-            texto: 'Logo abaixo você enxerga o volume total e o resultado filtrado, como uma régua rápida da navegação.'
+            titulo: 'Visão geral do painel',
+            texto: 'Aqui você acompanha quantas ações existem no total e quantas aparecem com os filtros ativos — sua régua de navegação.',
+            acao: () => { _tourClearInputs(); }
         },
         {
             selector: '#search',
-            titulo: 'Busca por texto',
-            texto: 'Use esta caixa para localizar a ação pela descrição e reduzir a navegação em segundos.'
+            titulo: 'Busca por descrição',
+            texto: 'Digite qualquer palavra da descrição e o painel filtra na hora. Veja como funciona:',
+            acao: () => {
+                const input = document.getElementById('search');
+                if (input) { input.focus(); _tourTypeText(input, 'gestão', 90); }
+            }
         },
         {
             selector: '#filter-numero-acao',
-            titulo: 'Busca pelo número',
-            texto: 'Se já souber o código, filtre pelo número da ação e vá direto ao ponto exato.'
+            titulo: 'Filtro pelo número da ação',
+            texto: 'Se souber o código, vá direto ao ponto. O filtro aceita prefixos — "1.1" já traz todas as ações 1.1.x.',
+            acao: () => {
+                const s = document.getElementById('search');
+                if (s && s.value) { s.value = ''; s.dispatchEvent(new Event('input', { bubbles: true })); }
+                const input = document.getElementById('filter-numero-acao');
+                if (input) { input.focus(); _tourTypeText(input, '1.1', 120); }
+            }
         },
         {
             selector: '.consolidada-card',
-            titulo: 'Abra a ação principal',
-            texto: 'Aqui a cena ganha corpo: ao abrir uma ação, os blocos de INEP e iESGo surgem para leitura imediata.'
+            titulo: 'Cards de ação',
+            texto: 'Cada card mostra a ação, seu número e o responsável. Cards com marcadores INEP ou iESGo se expandem ao clicar.',
+            acao: () => {
+                _tourClearInputs();
+                // clica no primeiro card que tenha marcadores (header clicável), se houver
+                const clicavel = document.querySelector('.consolidada-header-clicavel');
+                if (clicavel) {
+                    setTimeout(() => {
+                        if (!tourPrimeiraEntradaOverlay) return;
+                        clicavel.click();
+                    }, 900);
+                }
+            }
         }
     ];
+
+    // limpar ação anterior
+    _tourClearType();
 
     const passo = passos[index];
     const card = tourPrimeiraEntradaOverlay.querySelector('.lite-tour-card');
@@ -621,33 +675,36 @@ function atualizarTourPrimeiraEntrada(index) {
 
     if (target) {
         target.elemento.classList.add('lite-tour-target-active');
-        if (index === 4) {
-            target.elemento.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        }
-        const margem = index === 4 ? 12 : 14;
-        const left = Math.max(8, target.rect.left - margem);
-        const top = Math.max(8, target.rect.top - margem);
-        const width = Math.min(window.innerWidth - left - 8, target.rect.width + (margem * 2));
-        const height = Math.min(window.innerHeight - top - 8, target.rect.height + (margem * 2));
-
-        spotlight.style.opacity = '1';
-        spotlight.style.left = `${left}px`;
-        spotlight.style.top = `${top}px`;
-        spotlight.style.width = `${Math.max(120, width)}px`;
-        spotlight.style.height = `${Math.max(60, height)}px`;
+        target.elemento.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        const margem = 14;
+        // Recalcular rect após scroll
+        setTimeout(() => {
+            if (!tourPrimeiraEntradaOverlay) return;
+            const r = target.elemento.getBoundingClientRect();
+            const left = Math.max(8, r.left - margem);
+            const top = Math.max(8, r.top - margem);
+            const width = Math.min(window.innerWidth - left - 8, r.width + (margem * 2));
+            const height = Math.min(window.innerHeight - top - 8, r.height + (margem * 2));
+            spotlight.style.opacity = '1';
+            spotlight.style.left = `${left}px`;
+            spotlight.style.top = `${top}px`;
+            spotlight.style.width = `${Math.max(120, width)}px`;
+            spotlight.style.height = `${Math.max(60, height)}px`;
+        }, 200);
     } else {
         spotlight.style.opacity = '0';
-        spotlight.style.left = '50%';
-        spotlight.style.top = '50%';
-        spotlight.style.width = '1px';
-        spotlight.style.height = '1px';
     }
 
     if (card) {
         card.classList.add('is-pulse');
         card.style.opacity = '1';
     }
+
+    // executar ação interativa do passo (digitar, clicar, etc.)
+    if (passo.acao) passo.acao();
 }
+
+
 
 function iniciarTourPrimeiraEntrada(forcar = false) {
     if (tourPrimeiraEntradaTimer || tourPrimeiraEntradaIndex >= 0) return;
@@ -663,7 +720,7 @@ function iniciarTourPrimeiraEntrada(forcar = false) {
     const avancar = () => {
         if (!tourPrimeiraEntradaOverlay) return;
         tourPrimeiraEntradaIndex += 1;
-        if (tourPrimeiraEntradaIndex >= 5) {
+        if (tourPrimeiraEntradaIndex >= 4) {
             encerrarTourPrimeiraEntrada(true);
             return;
         }

@@ -916,7 +916,7 @@
    MARCADORES — badges + popup INEP / iESGo
 
             body.lite-tour-open {
-                overflow: hidden;
+                /* scroll livre durante o tour */
             }
 
             .lite-tour-overlay {
@@ -930,6 +930,10 @@
 
             .lite-tour-overlay.is-visible {
                 opacity: 1;
+                pointer-events: none; /* overlay em si não bloqueia — só o card abaixo */
+            }
+
+            .lite-tour-overlay.is-visible .lite-tour-card {
                 pointer-events: auto;
             }
 
@@ -937,35 +941,25 @@
                 content: '';
                 position: absolute;
                 inset: 0;
-                background:
-                    linear-gradient(180deg, rgba(2, 6, 23, 0.32) 0%, rgba(2, 6, 23, 0.68) 42%, rgba(2, 6, 23, 0.84) 100%),
-                    radial-gradient(circle at center, rgba(15, 23, 42, 0.10) 0%, rgba(15, 23, 42, 0.32) 55%, rgba(2, 6, 23, 0.75) 100%);
-                backdrop-filter: blur(3px);
+                background: transparent;
+                backdrop-filter: none;
             }
 
             .lite-tour-overlay::after {
-                content: '';
-                position: absolute;
-                inset: 0;
-                background-image:
-                    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-                background-size: 100% 9px, 9px 100%;
-                opacity: 0.16;
-                mix-blend-mode: screen;
-                pointer-events: none;
+                display: none;
             }
 
             .lite-tour-spotlight {
                 position: fixed;
-                border-radius: 22px;
+                border-radius: 14px;
                 box-shadow:
-                    0 0 0 9999px rgba(2, 6, 23, 0.58),
-                    0 0 0 2px rgba(253, 185, 19, 0.98),
-                    0 0 44px rgba(253, 185, 19, 0.34);
-                transition: left 280ms cubic-bezier(.2,.8,.2,1), top 280ms cubic-bezier(.2,.8,.2,1), width 280ms cubic-bezier(.2,.8,.2,1), height 280ms cubic-bezier(.2,.8,.2,1), opacity 220ms ease;
+                    0 0 0 3px rgba(253, 185, 19, 0.95),
+                    0 0 0 6px rgba(253, 185, 19, 0.18),
+                    0 4px 24px rgba(253, 185, 19, 0.22);
+                transition: left 320ms cubic-bezier(.2,.8,.2,1), top 320ms cubic-bezier(.2,.8,.2,1), width 320ms cubic-bezier(.2,.8,.2,1), height 320ms cubic-bezier(.2,.8,.2,1), opacity 220ms ease;
                 opacity: 0;
                 z-index: 1;
+                pointer-events: none;
             }
 
             .lite-tour-target-active {
