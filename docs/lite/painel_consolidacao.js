@@ -314,7 +314,7 @@ function renderMarcadoresPopup(consolidada) {
     const iesgoHtml = temIesgo ? `
         <div class="marc-popup-section">
             <div class="marc-popup-section-title marc-title-iesgo">
-                <i class="bi bi-clipboard-check-fill"></i> iESGo — Questões do Questionário
+                <i class="bi bi-list-check"></i> iESGo — Questões do Questionário
             </div>
             ${iesgoDetalhes.map(q=>`
                 <div class="marc-popup-item">
@@ -332,11 +332,11 @@ function renderMarcadoresPopup(consolidada) {
     return `
         <div class="marc-badges-row" onclick="event.stopPropagation()">
             ${temInep  ? `<div class="marc-badge marc-badge-inep"  onclick="toggleMarcPopup(event,${consolidada.id},'inep')"><i class="bi bi-mortarboard"></i> INEP</div>` : ''}
-            ${temIesgo ? `<div class="marc-badge marc-badge-iesgo" onclick="toggleMarcPopup(event,${consolidada.id},'iesgo')"><i class="bi bi-clipboard-check"></i> iESGo</div>` : ''}
+            ${temIesgo ? `<div class="marc-badge marc-badge-iesgo" onclick="toggleMarcPopup(event,${consolidada.id},'iesgo')"><i class="bi bi-list-check"></i> iESGo</div>` : ''}
             <div class="marc-popup" id="marc-popup-${consolidada.id}">
                 <div class="marc-popup-inner">
                     <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:12px;align-items:center;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:8px;">
-                        <span style="font-size:12px;color:#94a3b8;margin-right:auto;"><i class="bi bi-universal-access-circle"></i> Texto</span>
+                        <span style="font-size:12px;color:#94a3b8;margin-right:auto;display:inline-flex;align-items:center;gap:6px;"><i class="bi bi-person"></i> Texto</span>
                         <button type="button" onclick="mudarTamanhoFontePopup(event,${consolidada.id},-1)" style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;padding:2px 8px;font-weight:bold;color:#475569;font-size:13px;">A-</button>
                         <button type="button" onclick="mudarTamanhoFontePopup(event,${consolidada.id},1)"  style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;padding:2px 8px;font-weight:bold;color:#475569;font-size:14px;">A+</button>
                         <button class="marc-popup-close" onclick="fecharMarcPopup(event,${consolidada.id})" style="margin-left:8px;position:relative;top:0;right:0;"><i class="bi bi-x-lg"></i></button>
@@ -369,7 +369,7 @@ function renderMarcadoresInline(consolidada) {
     const iesgoCards = temIesgo ? iesgoDetalhes.map(q => `
         <div class="marc-inline-card iesgo">
             <div class="marc-inline-card-header">
-                <span class="marc-inline-card-label marc-inline-label-iesgo"><i class="bi bi-clipboard-check"></i> iESGo</span>
+                <span class="marc-inline-card-label marc-inline-label-iesgo"><i class="bi bi-list-check"></i> iESGo</span>
                 <span class="marc-inline-code">Questão ${escapeHtml(q.codigo)}</span>
             </div>
             <div class="marc-inline-subitem" style="flex-direction:column;gap:4px;">
@@ -388,7 +388,7 @@ function renderMarcadoresInline(consolidada) {
                 <div class="marc-inline-grid" style="margin-bottom:${temIesgo?'18px':'0'};">${inepCards}</div>
             ` : ''}
             ${temIesgo ? `
-                <div class="marc-inline-section-title"><i class="bi bi-clipboard-check"></i> iESGo — Questões do Questionário</div>
+                <div class="marc-inline-section-title"><i class="bi bi-list-check"></i> iESGo — Questões do Questionário</div>
                 <div class="marc-inline-grid">${iesgoCards}</div>
             ` : ''}
         </div>`;
@@ -404,7 +404,7 @@ function getInlineTextControlsPopup() {
     popup.setAttribute('aria-hidden', 'true');
     popup.innerHTML = `
         <div class="inline-text-controls-title">
-            <i class="bi bi-type"></i>
+            <i class="bi bi-fonts"></i>
             <span>Tamanho da letra</span>
         </div>
         <div class="inline-text-controls-actions">
