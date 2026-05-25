@@ -664,10 +664,10 @@ function atualizarIndicadoresUI() {
             const chip2 = chips[1];
             if (modoVisualizacao === 'propostas') {
                     chip1.innerHTML = `<i class="bi bi-file-earmark-text"></i> Propostas encontradas: <strong id="itens-encontrados">${document.getElementById('itens-encontrados')?.textContent || '0'}</strong>`;
-                    chip2.innerHTML = `<i class="bi bi-diagram-3"></i> Ações consolidadas: <strong id="propostas-encontrados">${document.getElementById('propostas-encontrados')?.textContent || '0'}</strong>`;
+                    chip2.innerHTML = `<i class="bi bi-diagram-3"></i> Ações consolidadas: <strong id="propostas-encontradas">${document.getElementById('propostas-encontradas')?.textContent || '0'}</strong>`;
             } else {
                 chip1.innerHTML = `<i class="bi bi-diagram-3"></i> Ações consolidadas: <strong id="itens-encontrados">${document.getElementById('itens-encontrados')?.textContent || '0'}</strong>`;
-                    chip2.innerHTML = `<i class="bi bi-file-earmark-text"></i> Propostas: <strong id="propostas-encontrados">${document.getElementById('propostas-encontrados')?.textContent || '0'}</strong>`;
+                    chip2.innerHTML = `<i class="bi bi-file-earmark-text"></i> Propostas: <strong id="propostas-encontradas">${document.getElementById('propostas-encontradas')?.textContent || '0'}</strong>`;
             }
         }
     } catch (e) {}
