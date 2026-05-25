@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel de Consolidação de Ações - PDI UFT</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../iconos-inline.css">
 </head>
 <body>
     <div class="brandbar">
@@ -23,7 +23,7 @@
                     <i class="bi bi-diagram-3"></i> Ações consolidadas
                 </button>
                 <button class="pill pill-toggle" id="pill-propostas" type="button" aria-pressed="false" onclick="setModo('propostas')">
-                    <i class="bi bi-journal-text"></i> Todas as propostas
+                    <i class="bi bi-file-earmark-text"></i> Todas as propostas
                 </button>
                 <span class="pill pill-label" title="O painel permite rastrear propostas que contribuíram para ações consolidadas.">
                     <i class="bi bi-link-45deg"></i> Rastreabilidade
@@ -45,12 +45,12 @@
                     <p>Todas as propostas recebidas foram registradas. As vinculadas aparecem nas ações consolidadas e as demais permanecem preservadas na base.</p>
                 </article>
                 <article class="intro-card">
-                    <h3><i class="bi bi-check2-square"></i> Classificação</h3>
+                    <h3><i class="bi bi-tags"></i> Classificação</h3>
                     <p>Quando uma contribuição foi descrita como tarefa operacional, a PROAP classificou como <strong>Categoria: Tarefa</strong> para manter a rastreabilidade.</p>
                 </article>
             </div>
             <details class="intro-glossario">
-                <summary><i class="bi bi-book"></i> Glossário rápido</summary>
+                <summary><i class="bi bi-chat-left-text"></i> Glossário rápido</summary>
                 <div class="intro-glossario-body">
                     <span><strong>Ação consolidada:</strong> ação final do PDI.</span>
                     <span><strong>Proposta:</strong> contribuição recebida da comunidade.</span>
@@ -62,13 +62,13 @@
         
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-icon"><i class="bi bi-journal-text"></i></div>
+                <div class="stat-icon"><i class="bi bi-link-45deg"></i></div>
                 <div class="stat-value" id="total-propostas">0</div>
                 <div class="stat-label">Propostas vinculadas</div>
             </div>
 
             <div class="stat-card">
-                <div class="stat-icon"><i class="bi bi-archive"></i></div>
+                <div class="stat-icon"><i class="bi bi-bookmark"></i></div>
                 <div class="stat-value" id="total-propostas-registradas">0</div>
                 <div class="stat-label">Propostas registradas</div>
             </div>
@@ -118,7 +118,7 @@
                     </select>
                 </div>
                 <div class="filter-item">
-                    <label><i class="bi bi-check2-square"></i> Tipo de registro</label>
+                    <label><i class="bi bi-tags"></i> Tipo de registro</label>
                     <select id="filter-tarefa">
                         <option value="">Ações e tarefas</option>
                         <option value="acao">Somente ações</option>
@@ -143,7 +143,7 @@
                     Ações consolidadas: <strong id="itens-encontrados">0</strong>
                 </div>
                 <div class="results-chip">
-                    <i class="bi bi-journal-text"></i>
+                    <i class="bi bi-file-earmark-text"></i>
                     Propostas: <strong id="propostas-encontradas">0</strong>
                 </div>
             </div>

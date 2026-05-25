@@ -663,11 +663,11 @@ function atualizarIndicadoresUI() {
             const chip1 = chips[0];
             const chip2 = chips[1];
             if (modoVisualizacao === 'propostas') {
-                chip1.innerHTML = `<i class="bi bi-journal-text"></i> Propostas encontradas: <strong id="itens-encontrados">${document.getElementById('itens-encontrados')?.textContent || '0'}</strong>`;
+                chip1.innerHTML = `<i class="bi bi-file-earmark-text"></i> Propostas encontradas: <strong id="itens-encontrados">${document.getElementById('itens-encontrados')?.textContent || '0'}</strong>`;
                 chip2.innerHTML = `<i class="bi bi-diagram-3"></i> Ações consolidadas: <strong id="propostas-encontradas">${document.getElementById('propostas-encontradas')?.textContent || '0'}</strong>`;
             } else {
                 chip1.innerHTML = `<i class="bi bi-diagram-3"></i> Ações consolidadas: <strong id="itens-encontrados">${document.getElementById('itens-encontrados')?.textContent || '0'}</strong>`;
-                chip2.innerHTML = `<i class="bi bi-journal-text"></i> Propostas: <strong id="propostas-encontradas">${document.getElementById('propostas-encontradas')?.textContent || '0'}</strong>`;
+                chip2.innerHTML = `<i class="bi bi-file-earmark-text"></i> Propostas: <strong id="propostas-encontradas">${document.getElementById('propostas-encontradas')?.textContent || '0'}</strong>`;
             }
         }
     } catch (e) {}
@@ -831,7 +831,7 @@ function renderizarTodasPropostas() {
     if (!Array.isArray(dadosFiltrados) || dadosFiltrados.length === 0) {
         container.innerHTML = `
             <div class="no-results">
-                <div class="no-results-icon"><i class="bi bi-journal-text"></i></div>
+                <div class="no-results-icon"><i class="bi bi-file-earmark-text"></i></div>
                 <h3>Nenhuma proposta encontrada</h3>
                 <p>Tente ajustar os filtros ou realizar uma nova busca</p>
             </div>
@@ -849,7 +849,7 @@ function renderizarTodasPropostas() {
                 </h3>
                 <div style="color:#475569;font-size:13px;">
                     <strong>Legenda:</strong> <span style="margin-left:6px;"><i class="bi bi-check-circle-fill" style="color:#16a34a;"></i> Contribuiu para ação</span>
-                    <span style="margin-left:10px;"><i class="bi bi-circle" style="color:#f59e0b;"></i> Registrada</span>
+                    <span style="margin-left:10px;"><i class="bi bi-bookmark" style="color:#f59e0b;"></i> Registrada</span>
                 </div>
             </div>
         </div>
@@ -860,13 +860,13 @@ function renderizarTodasPropostas() {
                     <div class="proposta-header" style="margin-bottom:10px;">
                         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                             <span style="font-size:12px; font-weight:800; letter-spacing:0.02em; color:#64748b; text-transform:uppercase;">Proposta</span>
-                            ${(p && p.categoriaTarefa) ? '<span class="tipo-registro-badge tarefa"><i class="bi bi-check2-square"></i> Categoria: Tarefa</span>' : ''}
+                            ${(p && p.categoriaTarefa) ? '<span class="tipo-registro-badge tarefa"><i class="bi bi-list-check"></i> Categoria: Tarefa</span>' : ''}
                         </div>
                         <span class="tipo-registro-badge ${p.status === 'vinculada' ? 'acao' : 'tarefa'}"
                                 title="${p.status === 'vinculada' ? 'Esta proposta contribuiu diretamente para uma ação consolidada.' : 'Esta proposta foi registrada e preservada, sem vinculação direta nesta etapa.'}">
                             ${p.status === 'vinculada'
                                 ? '<i class="bi bi-check-circle-fill"></i> Contribuiu para ação'
-                                : '<i class="bi bi-circle"></i> Registrada'}
+                                : '<i class="bi bi-bookmark"></i> Registrada'}
                         </span>
                     </div>
 
@@ -928,7 +928,7 @@ function renderMarcadoresPopup(consolidada) {
     const iesgoHtml = temIesgo ? `
         <div class="marc-popup-section">
             <div class="marc-popup-section-title marc-title-iesgo">
-                <i class="bi bi-clipboard-check-fill"></i> iESGo — Questões do Questionário
+                <i class="bi bi-list-check"></i> iESGo — Questões do Questionário
             </div>
             ${consolidada.iesgo_detalhes.map(q => `
                 <div class="marc-popup-item">
@@ -960,13 +960,13 @@ function renderMarcadoresPopup(consolidada) {
     return `
             <div class="marc-badges-row" onclick="event.stopPropagation()">
                 ${temInep  ? `<div class="marc-badge marc-badge-inep" onclick="toggleMarcPopup(event, ${consolidada.id}, 'inep')"><i class="bi bi-mortarboard"></i> INEP</div>`   : ''}
-                ${temIesgo ? `<div class="marc-badge marc-badge-iesgo" onclick="toggleMarcPopup(event, ${consolidada.id}, 'iesgo')"><i class="bi bi-clipboard-check"></i> iESGo</div>` : ''}
+                ${temIesgo ? `<div class="marc-badge marc-badge-iesgo" onclick="toggleMarcPopup(event, ${consolidada.id}, 'iesgo')"><i class="bi bi-list-check"></i> iESGo</div>` : ''}
                 ${temMarc  ? `<div class="marc-badge marc-badge-extra" onclick="toggleMarcPopup(event, ${consolidada.id}, 'extra')"><i class="bi bi-bookmark"></i> ${escapeHtml(consolidada.marcadores)}</div>` : ''}
                 <div class="marc-popup" id="marc-popup-${consolidada.id}">
                     <div class="marc-popup-inner">
                         <div style="display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 12px; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
                             <span style="font-size: 12px; color: #64748b; margin-right: auto;" title="Acessibilidade">
-                                <i class="bi bi-universal-access-circle"></i> Texto
+                                <i class="bi bi-person"></i> Texto
                             </span>
                             <button type="button" onclick="mudarTamanhoFontePopup(event, ${consolidada.id}, -1)" title="Diminuir texto" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer; padding:2px 8px; font-weight:bold; color:#475569; font-size:13px; transition:0.2s;">A-</button>
                             <button type="button" onclick="mudarTamanhoFontePopup(event, ${consolidada.id}, 1)" title="Aumentar texto" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer; padding:2px 8px; font-weight:bold; color:#475569; font-size:14px; transition:0.2s;">A+</button>
@@ -1109,7 +1109,7 @@ function renderizarConsolidadas() {
             <div class="consolidada-header" onclick="toggleCard(${index}, ${consolidada.id})">
                 <div class="consolidada-id-badge" onclick="copiarLink(event, ${consolidada.id})" title="Clique para copiar o link desta ação consolidada">ID ${consolidada.id}</div>
                 <div class="tipo-registro-badge ${getTipoRegistro(consolidada)}">
-                    ${isTarefa(consolidada) ? '<i class="bi bi-check2-square"></i> Tarefa' : '<i class="bi bi-flag"></i> Ação'}
+                    ${isTarefa(consolidada) ? '<i class="bi bi-list-check"></i> Tarefa' : '<i class="bi bi-flag"></i> Ação'}
                 </div>
                 <div class="consolidada-info">
                     <div class="consolidada-title">${highlight(textoSemTarefaNoFim(consolidada.acao), termoBuscaAtual)}</div>
@@ -1124,7 +1124,7 @@ function renderizarConsolidadas() {
                     </div>
                 </div>
                 <div class="propostas-badge">
-                    <i class="bi bi-journal-text"></i>
+                    <i class="bi bi-file-earmark-text"></i>
                     <span>${consolidada.propostas.length} proposta${consolidada.propostas.length !== 1 ? 's' : ''}</span>
                 </div>
                 <span class="expand-icon" id="icon-${index}"><i class="bi bi-chevron-down"></i></span>
@@ -1153,7 +1153,7 @@ function renderizarConsolidadas() {
                         <div class="proposta-card">
                             <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;">
                                 <div style="font-size:12px; font-weight:800; letter-spacing:0.02em; color:#64748b; text-transform:uppercase;">Proposta</div>
-                                ${(proposta && proposta.categoriaTarefa) ? '<span class="tipo-registro-badge tarefa"><i class="bi bi-check2-square"></i> Categoria: Tarefa</span>' : ''}
+                                ${(proposta && proposta.categoriaTarefa) ? '<span class="tipo-registro-badge tarefa"><i class="bi bi-list-check"></i> Categoria: Tarefa</span>' : ''}
                             </div>
                             <div class="proposta-texto">${highlight(textoSemTarefaNoFim(proposta.texto), termoBuscaAtual)}</div>
                             <div class="proposta-footer">
