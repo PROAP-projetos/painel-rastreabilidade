@@ -1,5 +1,5 @@
 // ── Versão Lite rev2 — INEP/iESGo inline, input de número, sem select ─────
-const DATA_URL = 'json_teste/acoes_consolidadas_v21.json';
+const DATA_URL = 'json_teste/acoes_consolidadas_v22.json';
 const HTML_FILE = (typeof window !== 'undefined' && window.location && window.location.pathname)
     ? (window.location.pathname.split('/').pop() || 'index_lite.html')
     : 'index_lite.html';
@@ -162,13 +162,24 @@ function atualizarUGBtn() {
 
 function formatarInepParaExportacao(consolidada) {
     const detalhes = Array.isArray(consolidada && consolidada.inep_detalhes) ? consolidada.inep_detalhes : [];
-    if (!detalhes.length) return String(consolidada && consolidada.inep ? consolidada.inep : '');
+    // Incluir sempre o título geral (`consolidada.inep`) quando disponível,
+    // seguido pelos detalhes formatados (código - indicador) em linhas separadas.
+    const linhas = [];
+    const titulo = String(consolidada && consolidatedInepLabel(consolidada) ? consolidatedInepLabel(consolidada) : (consolidada && consolidada.inep ? consolidada.inep : '')).trim();
+    if (titulo) linhas.push(titulo);
 
-    return detalhes.map(d => {
+    const detalhesLinhas = detalhes.map(d => {
         const numero = String(d && d.codigo ? d.codigo : '').trim();
-        const descricao = String(d && d.indicador ? d.indicador : '').trim();
-        return [numero, descricao].filter(Boolean).join(' - ');
-    }).filter(Boolean).join('\n');
+        const indicador = String(d && d.indicador ? d.indicador : '').trim();
+        const criterio = String(d && d.criterio ? d.criterio : '').trim();
+        return [numero, indicador, criterio].filter(Boolean).join(' - ');
+    }).filter(Boolean);
+
+    return linhas.concat(detalhesLinhas).join('\n');
+}
+
+function consolidatedInepLabel(consolidada) {
+    return consolidada && consolidada.inep ? String(consolidada.inep) : '';
 }
 
 function formatarIesgoParaExportacao(consolidada) {
