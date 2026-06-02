@@ -62,9 +62,30 @@
                         <input type="text" id="filter-numero-acao" placeholder="Número da ação (ex: 1.1.2)">
                     </div>
                 </div>
-                <button class="clear-filters clear-filters-lite" onclick="limparFiltros()">
-                    <i class="bi bi-arrow-counterclockwise"></i> Limpar
-                </button>
+                <div class="filter-lite-item">
+                    <label><i class="bi bi-person"></i> Unidades gestoras (UG)</label>
+                    <div class="filter-help-text">Selecione as UGs que deseja exportar</div>
+                    <div class="ug-filter-wrap" id="ugFilterWrap">
+                        <button class="ug-dropdown-btn" id="ugDropdownBtn" type="button" onclick="toggleUGDropdown()">Todas as UGs</button>
+                        <div class="ug-dropdown-panel" id="ugDropdownPanel">
+                            <label class="ug-option">
+                                <input id="ugChkAll" type="checkbox" onchange="toggleUGAll(this)">
+                                <span>Todas as UGs</span>
+                            </label>
+                        </div>
+                    </div>
+                    <select id="filter-ug" multiple hidden>
+                        <option value="">Todas as UGs</option>
+                    </select>
+                </div>
+                <div class="filters-lite-actions">
+                    <button class="clear-filters clear-filters-lite export-filters-lite" type="button" onclick="exportarPlanilha()">
+                        Exportar planilha
+                    </button>
+                    <button class="clear-filters clear-filters-lite" type="button" onclick="limparFiltros()">
+                        <i class="bi bi-arrow-counterclockwise"></i> Limpar
+                    </button>
+                </div>
             </div>
         </div>
 

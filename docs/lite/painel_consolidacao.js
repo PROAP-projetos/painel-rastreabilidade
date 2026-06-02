@@ -84,6 +84,239 @@ function formatarLista(valores, max=3) {
     return `${l.slice(0,max).join(', ')} +${l.length-max}`;
 }
 
+function getFiltroUgEl() {
+    return document.getElementById('filter-ug');
+}
+
+function getUgsSelecionadas() {
+    const select = getFiltroUgEl();
+    if (!select) return [];
+    return Array.from(select.selectedOptions || [])
+        .map(option => option.value)
+        .filter(Boolean);
+}
+
+function sanitizarNomeArquivo(texto) {
+    return String(texto || 'planilha')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_-]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .toLowerCase() || 'planilha';
+}
+
+function htmlTabelaCelula(valor) {
+    return escapeHtml(String(valor == null ? '' : valor)).replace(/\r?\n/g, '<br>');
+}
+
+function toggleUGDropdown() {
+    const btn = document.getElementById('ugDropdownBtn');
+    const panel = document.getElementById('ugDropdownPanel');
+    if (!btn || !panel) return;
+    btn.classList.toggle('open');
+    panel.classList.toggle('open');
+}
+
+function toggleUGAll(chk) {
+    const panel = document.getElementById('ugDropdownPanel');
+    if (!panel) return;
+    panel.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = chk.checked);
+    syncUGSelect();
+    aplicarFiltros();
+}
+
+function syncUGSelect() {
+    const panel = document.getElementById('ugDropdownPanel');
+    const select = getFiltroUgEl();
+    const chkAll = document.getElementById('ugChkAll');
+    if (!panel || !select) return;
+
+    const checkboxes = Array.from(panel.querySelectorAll('input[type=checkbox]')).filter(c => c !== chkAll);
+    const marcadas = checkboxes.filter(c => c.checked);
+
+    Array.from(select.options).forEach(opt => {
+        opt.selected = marcadas.some(c => c.value === opt.value);
+    });
+
+    if (chkAll) chkAll.checked = marcadas.length === checkboxes.length && checkboxes.length > 0;
+    atualizarUGBtn();
+}
+
+function atualizarUGBtn() {
+    const panel = document.getElementById('ugDropdownPanel');
+    const btn = document.getElementById('ugDropdownBtn');
+    const chkAll = document.getElementById('ugChkAll');
+    if (!panel || !btn) return;
+
+    const checkboxes = Array.from(panel.querySelectorAll('input[type=checkbox]')).filter(c => c !== chkAll);
+    const marcadas = checkboxes.filter(c => c.checked);
+
+    if (marcadas.length === 0) {
+        btn.textContent = 'Todas as UGs';
+    } else if (marcadas.length === 1) {
+        btn.textContent = marcadas[0].value;
+    } else {
+        btn.textContent = `${marcadas.length} UGs selecionadas`;
+    }
+}
+
+function formatarInepParaExportacao(consolidada) {
+    const detalhes = Array.isArray(consolidada && consolidada.inep_detalhes) ? consolidada.inep_detalhes : [];
+    if (!detalhes.length) return String(consolidada && consolidada.inep ? consolidada.inep : '');
+
+    return detalhes.map(d => {
+        const numero = String(d && d.codigo ? d.codigo : '').trim();
+        const descricao = String(d && d.indicador ? d.indicador : '').trim();
+        return [numero, descricao].filter(Boolean).join(' - ');
+    }).filter(Boolean).join('\n');
+}
+
+function formatarIesgoParaExportacao(consolidada) {
+    const detalhes = Array.isArray(consolidada && consolidada.iesgo_detalhes) ? consolidada.iesgo_detalhes : [];
+    if (!detalhes.length) return String(consolidada && consolidada.iesgo ? consolidada.iesgo : '');
+
+    return detalhes.map(q => {
+        const numero = String(q && q.codigo ? q.codigo : '').trim();
+        const descricao = (Array.isArray(q && q.itens) ? q.itens : [])
+            .map(it => {
+                const letra = String(it && it.item ? it.item : '').trim();
+                const texto = String(it && it.texto ? it.texto : '').trim();
+                return [letra, texto].filter(Boolean).join(': ');
+            })
+            .filter(Boolean)
+            .join(' | ');
+        return [numero, descricao].filter(Boolean).join(' - ');
+    }).filter(Boolean).join('\n');
+}
+
+function popularFiltros() {
+    const selectUg = getFiltroUgEl();
+    if (!selectUg) return;
+
+    const valoresAnteriores = new Set(getUgsSelecionadas());
+    const ugs = new Map();
+
+    dados.forEach(consolidada => {
+        getResponsaveisConsolidada(consolidada).forEach(ug => {
+            const chave = normalizarChave(ug);
+            if (chave && !ugs.has(chave)) ugs.set(chave, ug);
+        });
+    });
+
+    const panel = document.getElementById('ugDropdownPanel');
+    while (panel && panel.children.length > 1) panel.removeChild(panel.lastChild);
+
+    selectUg.options.length = 1;
+    if (selectUg.options[0]) selectUg.options[0].textContent = 'Todas as UGs';
+    if (selectUg.options[0]) selectUg.options[0].selected = valoresAnteriores.size === 0;
+
+    Array.from(ugs.values())
+        .sort((a, b) => String(a).localeCompare(String(b), 'pt-BR', { sensitivity: 'base' }))
+        .forEach(ug => {
+            const label = document.createElement('label');
+            label.className = 'ug-option';
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.value = ug;
+            chk.checked = valoresAnteriores.has(ug);
+            chk.addEventListener('change', () => { syncUGSelect(); aplicarFiltros(); });
+            label.appendChild(chk);
+            label.appendChild(document.createTextNode(ug));
+            if (panel) panel.appendChild(label);
+
+            const option = document.createElement('option');
+            option.value = ug;
+            option.textContent = ug;
+            option.selected = valoresAnteriores.has(ug);
+            selectUg.appendChild(option);
+        });
+
+    atualizarUGBtn();
+}
+
+function obterAcoesParaExportacao() {
+    return Array.isArray(dadosFiltrados) ? [...dadosFiltrados] : [];
+}
+
+function exportarPlanilha() {
+    const acoes = obterAcoesParaExportacao();
+    if (!acoes.length) {
+        alert('Nenhuma ação disponível para exportação com os filtros atuais.');
+        return;
+    }
+
+    const ugFiltro = getUgsSelecionadas();
+    const titulo = `Exportação de ações${ugFiltro.length ? ` - ${ugFiltro.join(', ')}` : ''}`;
+    const linhas = acoes.map((c, indice) => ({
+        id: c.id || indice + 1,
+        numero: getNumeroAcao(c),
+        acao: textoSemTarefaNoFim(c.acao),
+        ug: getResponsaveisConsolidada(c).join(', '),
+        inep: formatarInepParaExportacao(c),
+        iesgo: formatarIesgoParaExportacao(c),
+        eixo: c.eixo_pdi || ''
+    }));
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>${escapeHtml(titulo)}</title>
+    <style>
+        body { font-family: Calibri, Arial, sans-serif; margin: 24px; color: #000000; }
+        h1 { font-size: 20px; margin: 0 0 6px; }
+        .meta { color: #000000; margin: 0 0 18px; font-size: 12px; }
+        table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+        th, td { border: 1px solid #cbd5e1; padding: 8px 10px; vertical-align: top; text-align: left; word-wrap: break-word; color: #000000; }
+        td { font-weight: 400; }
+        th { background: #0f766e; color: #fff; font-weight: 700; }
+        tbody tr:nth-child(even) td { background: #f8fafc; }
+    </style>
+</head>
+<body>
+    <h1>${escapeHtml(titulo)}</h1>
+    <p class="meta">Total de ações exportadas: ${acoes.length}${ugFiltro.length ? ` | Filtro de UG: ${escapeHtml(ugFiltro.join(', '))}` : ''}</p>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Número</th>
+                <th>Ação</th>
+                <th>UG</th>
+                <th>INEP - número e descrição</th>
+                <th>IESGO - número e descrição</th>
+                <th>Eixo do PDI</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${linhas.map(linha => `
+                <tr>
+                    <td>${htmlTabelaCelula(linha.id)}</td>
+                    <td>${htmlTabelaCelula(linha.numero)}</td>
+                    <td>${htmlTabelaCelula(linha.acao)}</td>
+                    <td>${htmlTabelaCelula(linha.ug)}</td>
+                    <td>${htmlTabelaCelula(linha.inep)}</td>
+                    <td>${htmlTabelaCelula(linha.iesgo)}</td>
+                    <td>${htmlTabelaCelula(linha.eixo)}</td>
+                </tr>
+            `).join('')}
+        </tbody>
+    </table>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${sanitizarNomeArquivo(`acoes_ug_${ugFiltro.length ? ugFiltro.join('_') : 'todas'}`)}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // ── Número da ação ─────────────────────────────────────────────────────────
 
 function getNumeroAcao(c) {
@@ -153,6 +386,7 @@ function setDados(lista) {
     termoBuscaAtual='';
     dadosCarregados=true;
     atualizarTotalGlobal();
+    popularFiltros();
     aplicarFiltros();
     if (tourPrimeiraEntradaPendente) {
         tourPrimeiraEntradaPendente = false;
@@ -179,10 +413,12 @@ function atualizarEstatisticas() {
     const filtrosAtivosEl=document.getElementById('filtros-ativos');
     const searchValue=(document.getElementById('search')?.value||'').trim();
     const numeroValue=(document.getElementById('filter-numero-acao')?.value||'').trim();
+    const ugValue=getUgsSelecionadas();
     if (filtrosAtivosEl) {
         const partes=[];
         if (searchValue)  partes.push(`<strong>Busca:</strong> "${escapeHtml(searchValue)}"`);
         if (numeroValue)  partes.push(`<strong>Número:</strong> ${escapeHtml(numeroValue)}`);
+        if (ugValue.length)  partes.push(`<strong>UGs:</strong> ${escapeHtml(ugValue.join(', '))}`);
         filtrosAtivosEl.innerHTML=partes.length?`Filtros ativos: ${partes.join(' · ')}`:'Sem filtros ativos.';
     }
 }
@@ -197,12 +433,17 @@ function aplicarFiltros() {
     const searchTermCompacto=searchTerm.replace(/\s+/g,'');
     const numeroRaw=(document.getElementById('filter-numero-acao')?.value||'').trim();
     const numeroNorm=normalizarChave(numeroRaw);
+    const ugFiltro=getUgsSelecionadas();
+    const ugFiltroKeys=ugFiltro.map(ug=>normalizarChave(ug));
 
     dadosFiltrados=dados.filter(c=>{
         if (numeroNorm) {
             const numC=normalizarChave(getNumeroAcao(c));
             // match exato ou prefixo (ex: "1.1" casa "1.1.2")
             if (!numC.startsWith(numeroNorm) && numC!==numeroNorm) return false;
+        }
+        if (ugFiltro.length) {
+            if (!getResponsaveisConsolidada(c).some(ug=>ugFiltroKeys.includes(normalizarChave(ug)))) return false;
         }
         if (searchTerm) {
             if (!textoContemBusca(c.acao, searchTerm, searchTermCompacto) &&
@@ -218,6 +459,9 @@ function aplicarFiltros() {
 function limparFiltros() {
     const s=document.getElementById('search'); if(s) s.value='';
     const n=document.getElementById('filter-numero-acao'); if(n) n.value='';
+    const panel=document.getElementById('ugDropdownPanel'); if(panel) panel.querySelectorAll('input[type=checkbox]').forEach(c=>{ c.checked=false; });
+    const ug=getFiltroUgEl(); if(ug) Array.from(ug.options||[]).forEach(option=>{ option.selected = false; });
+    atualizarUGBtn();
     aplicarFiltros();
 }
 function limparBusca() {
@@ -877,6 +1121,11 @@ document.addEventListener('click', e => {
                 ocultarPopupTamanhoLetra();
             }
         }
+    }
+    const wrap = document.getElementById('ugFilterWrap');
+    if (wrap && !wrap.contains(e.target)) {
+        document.getElementById('ugDropdownBtn')?.classList.remove('open');
+        document.getElementById('ugDropdownPanel')?.classList.remove('open');
     }
 });
 

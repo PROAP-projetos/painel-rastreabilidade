@@ -300,6 +300,24 @@
         .clear-filters:hover {
             background: #cbd5e0;
         }
+
+        .filters-lite-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .clear-filters.export-filters-lite {
+            background: #0f766e;
+            color: #ffffff;
+            border: 1px solid #0f766e;
+        }
+
+        .clear-filters.export-filters-lite:hover {
+            background: #115e59;
+            border-color: #115e59;
+        }
         
         .filters-grid {
             display: grid;
@@ -314,6 +332,12 @@
             margin-bottom: 8px;
             font-size: 14px;
         }
+
+        .filter-help-text {
+            margin: -4px 0 8px;
+            color: #64748b;
+            font-size: 12px;
+        }
         
         .filter-item input,
         .filter-item select {
@@ -323,6 +347,10 @@
             border-radius: 10px;
             font-size: 14px;
             transition: border-color 0.2s;
+        }
+
+        .filter-item select[multiple] {
+            min-height: 140px;
         }
         
         .filter-item input:focus,
@@ -1479,20 +1507,133 @@
 }
 
 .filters-lite-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(320px, 1fr);
+    gap: 12px 14px;
+    align-items: start;
+    overflow: visible;
 }
 
 .filter-lite-item {
-    flex: 2 1 420px;
-    min-width: 300px;
+    min-width: 0;
     max-width: none;
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+    overflow: visible;
 }
 
-.filters-lite-row .filter-lite-item + .filter-lite-item {
-    flex: 1 1 320px;
+.filters-lite-actions {
+    width: 100%;
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    margin-top: 2px;
+}
+
+.filter-lite-item .search-wrap {
+    min-width: 0;
+}
+
+.filter-lite-item label {
+    display: block;
+    color: #4a5568;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.filter-help-text {
+    margin: -4px 0 6px;
+    color: #64748b;
+    font-size: 12px;
+    min-height: 14px;
+}
+
+.ug-filter-wrap {
+    position: relative;
+    width: 100%;
+    z-index: 20;
+    margin-top: 0;
+}
+.ug-filter-wrap,
+.ug-filter-wrap * {
+    box-sizing: border-box;
+}
+.ug-dropdown-btn {
+    width: 100%;
+    padding: 10px 36px 10px 13px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    background: #fff;
+    color: #1a202c;
+    cursor: pointer;
+    text-align: left;
+    appearance: none;
+    position: relative;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: border-color 0.2s;
+    font-family: inherit;
+}
+.ug-dropdown-btn:focus { outline: none; border-color: #667eea; }
+.ug-dropdown-btn::after {
+    content: '';
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 5px solid transparent;
+    border-top-color: #64748b;
+    margin-top: 3px;
+}
+.ug-dropdown-btn.open::after {
+    border-top-color: transparent;
+    border-bottom-color: #64748b;
+    margin-top: -3px;
+}
+.ug-dropdown-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0; right: 0;
+    background: #fff;
+    border: 2px solid #667eea;
+    border-radius: 10px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+    z-index: 99999;
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 8px 0;
+    transform: translateY(2px);
+}
+.ug-dropdown-panel.open { display: block; }
+.ug-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #1a202c;
+    transition: background 0.12s;
+    user-select: none;
+    line-height: 1.2;
+}
+.ug-option:hover { background: #f1f5f9; }
+.ug-option input[type=checkbox] {
+    accent-color: #667eea;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    margin: 0;
+    transform: translateY(1px);
+}
+.ug-option span {
+    line-height: 1.25;
+    display: block;
+    flex: 1 1 auto;
 }
 
 /* ícone dentro do search-wrap */

@@ -1,5 +1,5 @@
 // Caminho padrão do JSON (HTML fica em /ui e o JSON em /json).
-const DATA_URL = 'json_teste/acoes_consolidadas_v20.json';
+const DATA_URL = 'json_teste/acoes_consolidadas_v21.json';
 const HTML_FILE = (typeof window !== 'undefined' && window.location && window.location.pathname)
     ? (window.location.pathname.split('/').pop() || 'painel_consolidacao_final_arrumado.html')
     : 'painel_consolidacao_final_arrumado.html';
@@ -269,6 +269,21 @@ function textoContemBusca(valor, termoBuscaNorm, termoBuscaCompacto) {
     if (!termoBuscaCompacto || termoBuscaCompacto.length < 3) return false;
     const textoCompacto = textoNorm.replace(/\s+/g, '');
     return textoCompacto.includes(termoBuscaCompacto);
+}
+
+function getNumeroAcao(consolidada) {
+    if (!consolidada) return '';
+    if (consolidada.numero_acao) return String(consolidada.numero_acao).trim();
+    if (consolidada.numero) return String(consolidada.numero).trim();
+    const match = String(consolidada.acao || '').match(/^(\d+(?:\.\d+){1,4})/);
+    return match ? match[1] : '';
+}
+
+function getNumeroAcaoDaProposta(proposta) {
+    const id = toNumberOrNull(proposta && proposta.acao_consolidada_id);
+    if (id == null) return '';
+    const consolidada = (Array.isArray(dados) ? dados : []).find(c => Number(c && c.id) === id);
+    return getNumeroAcao(consolidada);
 }
 
 function normalizarAcaoTexto(texto) {
@@ -594,20 +609,37 @@ function popularFiltros() {
             selectEixo.appendChild(option);
         });
     }
-    
-    const selectResponsavel = getFiltroResponsavelEl();
-    if (selectResponsavel) selectResponsavel.options.length = 1;
-    if (selectResponsavel && selectResponsavel.id === 'filter-unidade' && selectResponsavel.options && selectResponsavel.options[0]) {
-        selectResponsavel.options[0].textContent = 'Todos os Responsáveis';
-    }
+
+    const ugPanel = document.getElementById('ugDropdownPanel');
+    const selecionadas = new Set(getUgSelecionadas());
+
+    while (ugPanel && ugPanel.children.length > 1) ugPanel.removeChild(ugPanel.lastChild);
+
+    const selectResponsavel = document.getElementById('filter-responsavel');
+    if (selectResponsavel) selectResponsavel.innerHTML = '<option value="">Todas as UGs</option>';
+
     Array.from(responsaveis.values())
         .sort((a, b) => String(a).localeCompare(String(b), 'pt-BR', { sensitivity: 'base' }))
         .forEach(responsavel => {
+        const label = document.createElement('label');
+        label.className = 'ug-option';
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.value = responsavel;
+        chk.checked = selecionadas.has(responsavel);
+        chk.addEventListener('change', () => { syncUGSelect(); aplicarFiltros(); });
+        label.appendChild(chk);
+        label.appendChild(document.createTextNode(responsavel));
+        if (ugPanel) ugPanel.appendChild(label);
+
         const option = document.createElement('option');
         option.value = responsavel;
         option.textContent = responsavel;
-        selectResponsavel.appendChild(option);
+        option.selected = selecionadas.has(responsavel);
+        if (selectResponsavel) selectResponsavel.appendChild(option);
     });
+
+    atualizarUGBtn();
 }
 
 function atualizarEstatisticas() {
@@ -640,10 +672,10 @@ function atualizarEstatisticas() {
     if (propostasEncontradasEl) {
         const searchValue = (document.getElementById('search')?.value || '').trim();
         const origemFiltro = document.getElementById('filter-origem')?.value || '';
-        const responsavelFiltro = getFiltroResponsavelEl()?.value || '';
+        const responsavelFiltro = getUgSelecionadas();
         const tarefaFiltro = getFiltroTarefaEl()?.value || '';
         const eixoFiltroAtivo = getFiltroEixoEl()?.value || '';
-        const temFiltrosAtivos = Boolean(searchValue || origemFiltro || responsavelFiltro || tarefaFiltro || eixoFiltroAtivo);
+        const temFiltrosAtivos = Boolean(searchValue || origemFiltro || responsavelFiltro.length || tarefaFiltro || eixoFiltroAtivo);
 
         propostasEncontradasEl.textContent = (modoVisualizacao === 'propostas')
             ? String(dados.length)
@@ -673,8 +705,9 @@ function atualizarIndicadoresUI() {
     } catch (e) {}
 
     const searchValue = (document.getElementById('search')?.value || '').trim();
+    const numeroValue = (document.getElementById('filter-numero-acao')?.value || '').trim();
     const origemFiltro = document.getElementById('filter-origem')?.value || '';
-    const responsavelFiltro = getFiltroResponsavelEl()?.value || '';
+    const responsavelFiltro = getUgSelecionadas();
     const tarefaFiltro = getFiltroTarefaEl()?.value || '';
     const eixoFiltro = getFiltroEixoEl()?.value || '';
 
@@ -688,9 +721,10 @@ function atualizarIndicadoresUI() {
 
     const partes = [];
     if (searchValue) partes.push(`<strong>Busca:</strong> “${escapeHtml(searchValue)}”`);
+    if (numeroValue) partes.push(`<strong>Número:</strong> ${escapeHtml(numeroValue)}`);
     if (origemFiltro) partes.push(`<strong>Origem:</strong> ${escapeHtml(origemFiltro)}`);
     if (eixoFiltro) partes.push(`<strong>Eixo:</strong> ${escapeHtml(eixoFiltro)}`);
-    if (responsavelFiltro) partes.push(`<strong>Responsável:</strong> ${escapeHtml(responsavelFiltro)}`);
+    if (responsavelFiltro.length) partes.push(`<strong>UGs:</strong> ${escapeHtml(responsavelFiltro.join(', '))}`);
     if (tarefaFiltro) partes.push(`<strong>Tipo:</strong> ${tarefaFiltro === 'tarefa' ? 'Somente tarefas' : 'Somente ações'}`);
 
     filtrosAtivosEl.innerHTML = partes.length ? `Filtros ativos: ${partes.join(' · ')}` : 'Sem filtros ativos.';
@@ -757,6 +791,201 @@ function formatarLista(valores, maxItens = 3) {
     if (lista.length === 0) return '';
     if (lista.length <= maxItens) return lista.join(', ');
     return `${lista.slice(0, maxItens).join(', ')} +${lista.length - maxItens}`;
+}
+
+function getUgSelecionadas() {
+    const select = getFiltroResponsavelEl();
+    if (!select) return [];
+    return Array.from(select.selectedOptions || [])
+        .map(option => option.value)
+        .filter(Boolean);
+}
+
+function toggleUGDropdown() {
+    const btn = document.getElementById('ugDropdownBtn');
+    const panel = document.getElementById('ugDropdownPanel');
+    if (!btn || !panel) return;
+    btn.classList.toggle('open');
+    panel.classList.toggle('open');
+}
+
+function toggleUGAll(chk) {
+    const panel = document.getElementById('ugDropdownPanel');
+    if (!panel) return;
+    panel.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = chk.checked);
+    syncUGSelect();
+    aplicarFiltros();
+}
+
+function syncUGSelect() {
+    const panel = document.getElementById('ugDropdownPanel');
+    const select = document.getElementById('filter-responsavel');
+    const chkAll = document.getElementById('ugChkAll');
+    if (!panel || !select) return;
+
+    const checkboxes = Array.from(panel.querySelectorAll('input[type=checkbox]')).filter(c => c !== chkAll);
+    const marcadas = checkboxes.filter(c => c.checked);
+
+    Array.from(select.options).forEach(opt => {
+        opt.selected = marcadas.some(c => c.value === opt.value);
+    });
+
+    if (chkAll) chkAll.checked = marcadas.length === checkboxes.length && checkboxes.length > 0;
+    atualizarUGBtn();
+}
+
+function atualizarUGBtn() {
+    const panel = document.getElementById('ugDropdownPanel');
+    const btn = document.getElementById('ugDropdownBtn');
+    const chkAll = document.getElementById('ugChkAll');
+    if (!panel || !btn) return;
+
+    const checkboxes = Array.from(panel.querySelectorAll('input[type=checkbox]')).filter(c => c !== chkAll);
+    const marcadas = checkboxes.filter(c => c.checked);
+
+    if (marcadas.length === 0) {
+        btn.textContent = 'Todas as UGs';
+    } else if (marcadas.length === 1) {
+        btn.textContent = marcadas[0].value;
+    } else {
+        btn.textContent = `${marcadas.length} UGs selecionadas`;
+    }
+}
+
+function sanitizarNomeArquivo(texto) {
+    return String(texto || 'planilha')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_-]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .toLowerCase() || 'planilha';
+}
+
+function htmlTabelaCelula(valor) {
+    return escapeHtml(String(valor == null ? '' : valor)).replace(/\r?\n/g, '<br>');
+}
+
+function formatarInepParaExportacao(consolidada) {
+    const detalhes = Array.isArray(consolidada && consolidada.inep_detalhes) ? consolidada.inep_detalhes : [];
+    if (!detalhes.length) return String(consolidada && consolidada.inep ? consolidada.inep : '');
+
+    return detalhes.map(d => {
+        const numero = String(d && d.codigo ? d.codigo : '').trim();
+        const descricao = String(d && d.indicador ? d.indicador : '').trim();
+        return [numero, descricao].filter(Boolean).join(' - ');
+    }).filter(Boolean).join('\n');
+}
+
+function formatarIesgoParaExportacao(consolidada) {
+    const detalhes = Array.isArray(consolidada && consolidada.iesgo_detalhes) ? consolidada.iesgo_detalhes : [];
+    if (!detalhes.length) return String(consolidada && consolidada.iesgo ? consolidada.iesgo : '');
+
+    return detalhes.map(q => {
+        const numero = String(q && q.codigo ? q.codigo : '').trim();
+        const descricao = (Array.isArray(q && q.itens) ? q.itens : [])
+            .map(it => {
+                const letra = String(it && it.item ? it.item : '').trim();
+                const texto = String(it && it.texto ? it.texto : '').trim();
+                return [letra, texto].filter(Boolean).join(': ');
+            })
+            .filter(Boolean)
+            .join(' | ');
+        return [numero, descricao].filter(Boolean).join(' - ');
+    }).filter(Boolean).join('\n');
+}
+
+function obterAcoesParaExportacao() {
+    if (modoVisualizacao === 'acoes') {
+        return Array.isArray(dadosFiltrados) ? [...dadosFiltrados] : [];
+    }
+
+    const ids = new Set(
+        (Array.isArray(dadosFiltrados) ? dadosFiltrados : [])
+            .map(p => toNumberOrNull(p && p.acao_consolidada_id))
+            .filter(v => v !== null)
+    );
+
+    if (!ids.size) return [];
+    return dados.filter(c => ids.has(toNumberOrNull(c && c.id)));
+}
+
+function exportarPlanilha() {
+    const acoes = obterAcoesParaExportacao();
+    if (!acoes.length) {
+        alert('Nenhuma ação disponível para exportação com os filtros atuais.');
+        return;
+    }
+
+    const ugFiltro = getFiltroResponsavelEl()?.value || '';
+    const titulo = `Exportação de ações${ugFiltro ? ` - ${ugFiltro}` : ''}`;
+    const linhas = acoes.map((c, indice) => ({
+        id: c.id || indice + 1,
+        numero: getNumeroAcao(c),
+        acao: textoSemTarefaNoFim(c.acao),
+        ug: getResponsaveisConsolidada(c).join(', '),
+        inep: formatarInepParaExportacao(c),
+        iesgo: formatarIesgoParaExportacao(c),
+        eixo: c.eixo_pdi || ''
+    }));
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>${escapeHtml(titulo)}</title>
+    <style>
+        body { font-family: Calibri, Arial, sans-serif; margin: 24px; color: #000000; }
+        h1 { font-size: 20px; margin: 0 0 6px; }
+        .meta { color: #000000; margin: 0 0 18px; font-size: 12px; }
+        table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+        th, td { border: 1px solid #cbd5e1; padding: 8px 10px; vertical-align: top; text-align: left; word-wrap: break-word; color: #000000; }
+        td { font-weight: 400; }
+        th { background: #0f766e; color: #fff; font-weight: 700; }
+        tbody tr:nth-child(even) td { background: #f8fafc; }
+    </style>
+</head>
+<body>
+    <h1>${escapeHtml(titulo)}</h1>
+    <p class="meta">Total de ações exportadas: ${acoes.length}${ugFiltro ? ` | Filtro de UG: ${escapeHtml(ugFiltro)}` : ''}</p>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Número</th>
+                <th>Ação</th>
+                <th>UG</th>
+                <th>INEP - número e descrição</th>
+                <th>IESGO - número e descrição</th>
+                <th>Eixo do PDI</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${linhas.map(linha => `
+                <tr>
+                    <td>${htmlTabelaCelula(linha.id)}</td>
+                    <td>${htmlTabelaCelula(linha.numero)}</td>
+                    <td>${htmlTabelaCelula(linha.acao)}</td>
+                    <td>${htmlTabelaCelula(linha.ug)}</td>
+                    <td>${htmlTabelaCelula(linha.inep)}</td>
+                    <td>${htmlTabelaCelula(linha.iesgo)}</td>
+                    <td>${htmlTabelaCelula(linha.eixo)}</td>
+                </tr>
+            `).join('')}
+        </tbody>
+    </table>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${sanitizarNomeArquivo(`acoes_ug_${ugFiltro || 'todas'}`)}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function getOrigensProposta(proposta) {
@@ -1107,7 +1336,9 @@ function renderizarConsolidadas() {
     container.innerHTML = dadosFiltrados.map((consolidada, index) => `
         <div class="consolidada-card" id="item-${consolidada.id}" data-item-id="${consolidada.id}">
             <div class="consolidada-header" onclick="toggleCard(${index}, ${consolidada.id})">
-                <div class="consolidada-id-badge" onclick="copiarLink(event, ${consolidada.id})" title="Clique para copiar o link desta ação consolidada">ID ${consolidada.id}</div>
+                ${getNumeroAcao(consolidada) ?
+                    `<div class="consolidada-numero-badge" onclick="copiarLink(event, ${consolidada.id})" title="Clique para copiar o link desta ação consolidada">${escapeHtml(getNumeroAcao(consolidada))}</div>` :
+                    `<div class="consolidada-id-badge" onclick="copiarLink(event, ${consolidada.id})" title="Clique para copiar o link desta ação consolidada">ID ${consolidada.id}</div>`}
                 <div class="tipo-registro-badge ${getTipoRegistro(consolidada)}">
                     ${isTarefa(consolidada) ? '<i class="bi bi-list-check"></i> Tarefa' : '<i class="bi bi-flag"></i> Ação'}
                 </div>
@@ -1260,15 +1491,24 @@ function aplicarFiltros() {
     termoBuscaAtual = searchRaw;
     const searchTerm = normalizarTextoBusca(searchRaw);
     const searchTermCompacto = searchTerm.replace(/\s+/g, '');
+    const numeroRaw = (document.getElementById('filter-numero-acao')?.value || '').trim();
+    const numeroNorm = normalizarChave(numeroRaw);
     const origemFiltro = document.getElementById('filter-origem').value;
-    const responsavelFiltro = getFiltroResponsavelEl()?.value || '';
+    const responsavelFiltro = getUgSelecionadas();
     const tarefaFiltro = getFiltroTarefaEl()?.value || '';
     const eixoFiltro = getFiltroEixoEl()?.value || '';
     const sortBy = document.getElementById('sort-by').value;
-    const responsavelFiltroKey = responsavelFiltro ? normalizarChave(responsavelFiltro) : '';
+    const responsavelFiltroKeys = responsavelFiltro.map(r => normalizarChave(r));
     
     if (modoVisualizacao === 'propostas') {
         let lista = Array.isArray(todasPropostas) ? [...todasPropostas] : [];
+
+        if (numeroNorm) {
+            lista = lista.filter(p => {
+                const numeroProposta = normalizarChave(getNumeroAcaoDaProposta(p));
+                return numeroProposta && (numeroProposta.startsWith(numeroNorm) || numeroProposta === numeroNorm);
+            });
+        }
 
         if (origemFiltro) {
             lista = lista.filter(p => getOrigensProposta(p).includes(origemFiltro));
@@ -1279,8 +1519,8 @@ function aplicarFiltros() {
             );
             lista = lista.filter(p => p.acao_consolidada_id != null && eixoAcaoIds.has(p.acao_consolidada_id));
         }
-        if (responsavelFiltro) {
-            lista = lista.filter(p => getResponsaveisProposta(p).some(r => normalizarChave(r) === responsavelFiltroKey));
+        if (responsavelFiltro.length) {
+            lista = lista.filter(p => getResponsaveisProposta(p).some(r => responsavelFiltroKeys.includes(normalizarChave(r))));
         }
         if (tarefaFiltro === 'tarefa') {
             lista = lista.filter(p => Boolean(p && p.categoriaTarefa));
@@ -1353,15 +1593,22 @@ function aplicarFiltros() {
         };
     });
     
+    if (numeroNorm) {
+        dadosFiltrados = dadosFiltrados.filter(c => {
+            const num = normalizarChave(getNumeroAcao(c));
+            return num && (num.startsWith(numeroNorm) || num === numeroNorm);
+        });
+    }
+
     if (origemFiltro) {
         dadosFiltrados = dadosFiltrados.filter(c => c.propostas.length > 0);
     } else if (searchTerm) {
         dadosFiltrados = dadosFiltrados.filter(c => c.__acaoMatch || c.propostas.length > 0);
     }
     
-    if (responsavelFiltro) {
+    if (responsavelFiltro.length) {
         dadosFiltrados = dadosFiltrados.filter(c => {
-            return getResponsaveisConsolidada(c).some(r => normalizarChave(r) === responsavelFiltroKey);
+            return getResponsaveisConsolidada(c).some(r => responsavelFiltroKeys.includes(normalizarChave(r)));
         });
     }
     if (tarefaFiltro) {
@@ -1392,11 +1639,16 @@ function aplicarFiltros() {
 
 function limparFiltros() {
     document.getElementById('search').value = '';
+    const numeroEl = document.getElementById('filter-numero-acao');
+    if (numeroEl) numeroEl.value = '';
     document.getElementById('filter-origem').value = '';
     const filtroEixoEl = getFiltroEixoEl();
     if (filtroEixoEl) filtroEixoEl.value = '';
+    const panel = document.getElementById('ugDropdownPanel');
+    if (panel) panel.querySelectorAll('input[type=checkbox]').forEach(c => { c.checked = false; });
     const filtroResponsavelEl = getFiltroResponsavelEl();
-    if (filtroResponsavelEl) filtroResponsavelEl.value = '';
+    if (filtroResponsavelEl) Array.from(filtroResponsavelEl.options || []).forEach(option => { option.selected = false; });
+    atualizarUGBtn();
     const filtroTarefaEl = getFiltroTarefaEl();
     if (filtroTarefaEl) filtroTarefaEl.value = '';
     document.getElementById('sort-by').value = 'propostas-desc';
@@ -1440,6 +1692,7 @@ function mudarTamanhoFontePopup(event, id, direcao) {
 
 // Event listeners
 document.getElementById('search').addEventListener('input', aplicarFiltros);
+document.getElementById('filter-numero-acao')?.addEventListener('input', aplicarFiltros);
 document.getElementById('filter-origem').addEventListener('change', aplicarFiltros);
 const filtroEixoEl = getFiltroEixoEl();
 if (filtroEixoEl) filtroEixoEl.addEventListener('change', aplicarFiltros);
@@ -1453,6 +1706,14 @@ document.getElementById('sort-by').addEventListener('change', aplicarFiltros);
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.marc-badge') && !e.target.closest('.marc-popup')) {
         document.querySelectorAll('.marc-popup-open').forEach(p => p.classList.remove('marc-popup-open'));
+    }
+});
+
+document.addEventListener('click', function(e) {
+    const wrap = document.getElementById('ugFilterWrap');
+    if (wrap && !wrap.contains(e.target)) {
+        document.getElementById('ugDropdownBtn')?.classList.remove('open');
+        document.getElementById('ugDropdownPanel')?.classList.remove('open');
     }
 });
 
