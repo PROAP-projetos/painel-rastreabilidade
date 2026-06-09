@@ -24,6 +24,69 @@ let tourPrimeiraEntradaIndex = -1;
 let tourPrimeiraEntradaOverlay = null;
 let tourPrimeiraEntradaPendente = false;
 
+// ── Filtro por URL (?ug=PROEST) ────────────────────────────────────────────
+
+function getUgDaUrl() {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    const ug = (params.get('ug') || '').trim();
+    return ug || null;
+}
+
+function aplicarFiltroDeUrl() {
+    const ugUrl = getUgDaUrl();
+    if (!ugUrl) return;
+
+    // Encontra a UG nos dados (busca parcial, case-insensitive)
+    const ugNorm = normalizarChave(ugUrl);
+    const ugReal = [...new Set(
+        dados.flatMap(c => getResponsaveisConsolidada(c))
+    )].find(ug => normalizarChave(ug).includes(ugNorm) || ugNorm.includes(normalizarChave(ug)));
+
+    const ugFinal = ugReal || ugUrl;
+
+    // Marca o checkbox correspondente no dropdown
+    const panel = document.getElementById('ugDropdownPanel');
+    if (panel) {
+        panel.querySelectorAll('input[type=checkbox]').forEach(chk => {
+            if (normalizarChave(chk.value).includes(ugNorm) || ugNorm.includes(normalizarChave(chk.value))) {
+                chk.checked = true;
+            }
+        });
+    }
+
+    // Sincroniza o <select> oculto
+    const selectUg = getFiltroUgEl();
+    if (selectUg) {
+        Array.from(selectUg.options).forEach(opt => {
+            if (normalizarChave(opt.value).includes(ugNorm) || ugNorm.includes(normalizarChave(opt.value))) {
+                opt.selected = true;
+            }
+        });
+    }
+
+    atualizarUGBtn();
+    mostrarBannerUgUrl(ugFinal);
+}
+
+function mostrarBannerUgUrl(ugNome) {
+    if (document.getElementById('url-ug-banner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'url-ug-banner';
+    banner.className = 'url-ug-banner';
+    banner.innerHTML = `
+        <i class="bi bi-funnel-fill"></i>
+        Exibindo apenas ações de: <strong>${escapeHtml(ugNome)}</strong>
+        <a href="${escapeHtml(window.location.pathname)}" class="url-ug-banner-clear" title="Ver todas as UGs">
+            <i class="bi bi-x-circle"></i> Ver todas
+        </a>`;
+    const container = document.querySelector('.container');
+    const filtersSection = document.querySelector('.filters-section');
+    if (container && filtersSection) {
+        container.insertBefore(banner, filtersSection);
+    }
+}
+
 // ── Utilitários ────────────────────────────────────────────────────────────
 
 function escapeHtml(str) {
@@ -398,6 +461,7 @@ function setDados(lista) {
     dadosCarregados=true;
     atualizarTotalGlobal();
     popularFiltros();
+    aplicarFiltroDeUrl(); // aplica ?ug= da URL antes de filtrar
     aplicarFiltros();
     if (tourPrimeiraEntradaPendente) {
         tourPrimeiraEntradaPendente = false;
