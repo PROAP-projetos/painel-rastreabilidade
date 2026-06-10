@@ -1,5 +1,5 @@
 // ── Versão Lite rev2 — INEP/iESGo inline, input de número, sem select ─────
-const DATA_URL = 'json_teste/acoes_consolidadas_v22.json';
+const DATA_URL = 'json_teste/acoes_consolidadas_v25.json';
 const HTML_FILE = (typeof window !== 'undefined' && window.location && window.location.pathname)
     ? (window.location.pathname.split('/').pop() || 'index_lite.html')
     : 'index_lite.html';
