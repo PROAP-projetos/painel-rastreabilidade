@@ -1,5 +1,5 @@
 // ── Versão Lite rev2 — INEP/iESGo inline, input de número, sem select ─────
-const DATA_URL = 'json_teste/acoes_consolidadas_v25.json';
+const DATA_URL = 'json_teste/base_painel_atualizada.json';
 const HTML_FILE = (typeof window !== 'undefined' && window.location && window.location.pathname)
     ? (window.location.pathname.split('/').pop() || 'index_lite.html')
     : 'index_lite.html';
@@ -9,20 +9,12 @@ let dadosFiltrados = [];
 let termoBuscaAtual = '';
 let dadosCarregados = false;
 let metaDados = null;
-let numeroInputTimer = null; // debouncee
+let numeroInputTimer = null; // debounce
 let inlineTextScale = 1;
 let inlineTextSectionIdAtiva = null;
 const INLINE_TEXT_SCALE_MIN = 0.9;
 const INLINE_TEXT_SCALE_MAX = 1.35;
 const INLINE_TEXT_SCALE_STEP = 0.05;
-const TOUR_STORAGE_KEY = 'painel-lite-tour-v1';
-const TOUR_STEP_DURATION = 4500;
-const TOUR_FORCE_QUERY_PARAM = 'tour';
-
-let tourPrimeiraEntradaTimer = null;
-let tourPrimeiraEntradaIndex = -1;
-let tourPrimeiraEntradaOverlay = null;
-let tourPrimeiraEntradaPendente = false;
 
 // ── Filtro por URL (?ug=PROEST) ────────────────────────────────────────────
 
@@ -37,7 +29,6 @@ function aplicarFiltroDeUrl() {
     const ugUrl = getUgDaUrl();
     if (!ugUrl) return;
 
-    // Encontra a UG nos dados (busca parcial, case-insensitive)
     const ugNorm = normalizarChave(ugUrl);
     const ugReal = [...new Set(
         dados.flatMap(c => getResponsaveisConsolidada(c))
@@ -45,7 +36,6 @@ function aplicarFiltroDeUrl() {
 
     const ugFinal = ugReal || ugUrl;
 
-    // Marca o checkbox correspondente no dropdown
     const panel = document.getElementById('ugDropdownPanel');
     if (panel) {
         panel.querySelectorAll('input[type=checkbox]').forEach(chk => {
@@ -55,7 +45,6 @@ function aplicarFiltroDeUrl() {
         });
     }
 
-    // Sincroniza o <select> oculto
     const selectUg = getFiltroUgEl();
     if (selectUg) {
         Array.from(selectUg.options).forEach(opt => {
@@ -225,8 +214,6 @@ function atualizarUGBtn() {
 
 function formatarInepParaExportacao(consolidada) {
     const detalhes = Array.isArray(consolidada && consolidada.inep_detalhes) ? consolidada.inep_detalhes : [];
-    // Incluir sempre o título geral (`consolidada.inep`) quando disponível,
-    // seguido pelos detalhes formatados (código - indicador) em linhas separadas.
     const linhas = [];
     const titulo = String(consolidada && consolidatedInepLabel(consolidada) ? consolidatedInepLabel(consolidada) : (consolidada && consolidada.inep ? consolidada.inep : '')).trim();
     if (titulo) linhas.push(titulo);
@@ -461,12 +448,8 @@ function setDados(lista) {
     dadosCarregados=true;
     atualizarTotalGlobal();
     popularFiltros();
-    aplicarFiltroDeUrl(); // aplica ?ug= da URL antes de filtrar
+    aplicarFiltroDeUrl();
     aplicarFiltros();
-    if (tourPrimeiraEntradaPendente) {
-        tourPrimeiraEntradaPendente = false;
-        setTimeout(() => iniciarTourPrimeiraEntrada(true), 0);
-    }
 }
 async function inicializar() {
     renderizarLoading(); dadosCarregados=false;
@@ -514,7 +497,6 @@ function aplicarFiltros() {
     dadosFiltrados=dados.filter(c=>{
         if (numeroNorm) {
             const numC=normalizarChave(getNumeroAcao(c));
-            // match exato ou prefixo (ex: "1.1" casa "1.1.2")
             if (!numC.startsWith(numeroNorm) && numC!==numeroNorm) return false;
         }
         if (ugFiltro.length) {
@@ -548,7 +530,7 @@ function limparNumero() {
     input.value=''; input.focus(); aplicarFiltros();
 }
 
-// ── Marcadores popup (mantido para os badges clicáveis no meta) ───────────
+// ── Marcadores popup (badges clicáveis no meta) ────────────────────────────
 
 function limparPopupsOrfaos() {
     document.querySelectorAll('body > .marc-popup').forEach(p=>p.remove());
@@ -608,7 +590,7 @@ function mudarTamanhoFontePopup(event, id, dir) {
     });
 }
 
-// ── Render INEP/iESGo popup (para o badge no meta) ────────────────────────
+// ── Render INEP/iESGo popup ────────────────────────────────────────────────
 
 function renderMarcadoresPopup(consolidada) {
     const inepDetalhes = Array.isArray(consolidada.inep_detalhes) ? consolidada.inep_detalhes : [];
@@ -666,7 +648,7 @@ function renderMarcadoresPopup(consolidada) {
         </div>`;
 }
 
-// ── Render INEP/iESGo inline (dentro do card, como era proposta) ──────────
+// ── Render INEP/iESGo inline ──────────────────────────────────────────────
 
 function renderMarcadoresInline(consolidada) {
     const inepDetalhes = Array.isArray(consolidada.inep_detalhes) ? consolidada.inep_detalhes : [];
@@ -781,314 +763,6 @@ function ajustarTamanhoLetraInline(direcao) {
     aplicarEscalaTextoInline(inlineTextSectionIdAtiva);
 }
 
-// ── Tour de primeira entrada ──────────────────────────────────────────────
-
-function tourPrimeiraEntradaJaVisto() {
-    try {
-        return localStorage.getItem(TOUR_STORAGE_KEY) === '1';
-    } catch {
-        return false;
-    }
-}
-
-function tourPrimeiraEntradaForcado() {
-    try {
-        return new URLSearchParams(window.location.search).get(TOUR_FORCE_QUERY_PARAM) === '1';
-    } catch {
-        return false;
-    }
-}
-
-function marcarTourPrimeiraEntradaComoVisto() {
-    try {
-        localStorage.setItem(TOUR_STORAGE_KEY, '1');
-    } catch {
-        // Ignora quando o navegador bloqueia armazenamento persistente.
-    }
-}
-
-function encerrarTourPrimeiraEntrada(marcarVisto = true) {
-    _tourClearType();
-    ['search', 'filter-numero-acao'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el && el.value) { el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); }
-    });
-
-    if (tourPrimeiraEntradaTimer) {
-        clearTimeout(tourPrimeiraEntradaTimer);
-        tourPrimeiraEntradaTimer = null;
-    }
-
-    if (marcarVisto) {
-        marcarTourPrimeiraEntradaComoVisto();
-    }
-
-    document.body.classList.remove('lite-tour-open');
-    document.querySelectorAll('.lite-tour-target-active').forEach(el => el.classList.remove('lite-tour-target-active'));
-
-    if (tourPrimeiraEntradaOverlay) {
-        tourPrimeiraEntradaOverlay.classList.remove('is-visible');
-        const overlay = tourPrimeiraEntradaOverlay;
-        tourPrimeiraEntradaOverlay = null;
-        setTimeout(() => overlay.remove(), 260);
-    }
-    tourPrimeiraEntradaIndex = -1;
-}
-
-function criarTourPrimeiraEntrada() {
-    if (tourPrimeiraEntradaOverlay) return tourPrimeiraEntradaOverlay;
-
-    const overlay = document.createElement('div');
-    overlay.id = 'lite-tour-overlay';
-    overlay.className = 'lite-tour-overlay';
-    overlay.innerHTML = `
-        <div class="lite-tour-spotlight" aria-hidden="true"></div>
-        <section class="lite-tour-card" role="dialog" aria-live="polite" aria-label="Tour de primeira entrada">
-            <div class="lite-tour-top">
-                <span class="lite-tour-badge"><i class="bi bi-stars"></i> Primeira visita</span>
-                <button type="button" class="lite-tour-close" data-tour-close aria-label="Pular tour">Pular</button>
-            </div>
-            <div class="lite-tour-step" data-tour-step>1 de 4</div>
-            <h3 data-tour-title>Preparando a visão geral</h3>
-            <p data-tour-text></p>
-            <div class="lite-tour-progress" aria-hidden="true"><span data-tour-progress></span></div>
-            <div class="lite-tour-footer">
-                <i class="bi bi-cursor-fill"></i>
-                Avança automaticamente • clique em Pular para fechar.
-            </div>
-        </section>
-    `;
-
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) encerrarTourPrimeiraEntrada(true);
-    });
-
-    overlay.querySelector('[data-tour-close]')?.addEventListener('click', event => {
-        event.stopPropagation();
-        encerrarTourPrimeiraEntrada(true);
-    });
-
-    document.body.appendChild(overlay);
-    tourPrimeiraEntradaOverlay = overlay;
-    return overlay;
-}
-
-function mostrarTourPreparacao() {
-    const overlay = criarTourPrimeiraEntrada();
-    const title = overlay.querySelector('[data-tour-title]');
-    const text = overlay.querySelector('[data-tour-text]');
-    const stepLabel = overlay.querySelector('[data-tour-step]');
-    const progress = overlay.querySelector('[data-tour-progress]');
-
-    document.body.classList.add('lite-tour-open');
-    overlay.classList.add('is-visible');
-    if (stepLabel) stepLabel.textContent = 'Preparando';
-    if (title) title.textContent = 'Abrindo o tour';
-    if (text) text.textContent = 'Aguarde um instante enquanto a cena é preparada.';
-    if (progress) progress.style.width = '5%';
-}
-
-function obterAlvoTour(selector) {
-    const elemento = document.querySelector(selector);
-    if (!elemento) return null;
-    const rect = elemento.getBoundingClientRect();
-    if (!rect.width || !rect.height) return null;
-    return { elemento, rect };
-}
-
-// ── Tour: digitação animada num input ─────────────────────────────────────
-let _tourTypeTimer = null;
-function _tourClearType() {
-    if (_tourTypeTimer) { clearTimeout(_tourTypeTimer); _tourTypeTimer = null; }
-}
-function _tourTypeText(input, texto, delay = 80) {
-    _tourClearType();
-    if (!input) return;
-    input.value = '';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    let i = 0;
-    const next = () => {
-        if (!tourPrimeiraEntradaOverlay) return; // tour encerrado
-        if (i >= texto.length) return;
-        input.value = texto.slice(0, ++i);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        _tourTypeTimer = setTimeout(next, delay);
-    };
-    _tourTypeTimer = setTimeout(next, 420);
-}
-function _tourClearInputs() {
-    _tourClearType();
-    ['search', 'filter-numero-acao'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el && el.value) { el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); }
-    });
-}
-
-function atualizarTourPrimeiraEntrada(index) {
-    if (!tourPrimeiraEntradaOverlay) return;
-
-    const passos = [
-        {
-            selector: '.lite-stats-row',
-            titulo: 'Visão geral do painel',
-            texto: 'Aqui você acompanha quantas ações existem no total e quantas aparecem com os filtros ativos — sua régua de navegação.',
-            acao: () => { _tourClearInputs(); }
-        },
-        {
-            selector: '#search',
-            titulo: 'Busca por descrição',
-            texto: 'Digite qualquer palavra da descrição e o painel filtra na hora. Veja como funciona:',
-            acao: () => {
-                const input = document.getElementById('search');
-                if (input) { input.focus(); _tourTypeText(input, 'gestão', 90); }
-            }
-        },
-        {
-            selector: '#filter-numero-acao',
-            titulo: 'Filtro pelo número da ação',
-            texto: 'Se souber o código, vá direto ao ponto. O filtro aceita prefixos — "1.1" já traz todas as ações 1.1.x.',
-            acao: () => {
-                const s = document.getElementById('search');
-                if (s && s.value) { s.value = ''; s.dispatchEvent(new Event('input', { bubbles: true })); }
-                const input = document.getElementById('filter-numero-acao');
-                if (input) { input.focus(); _tourTypeText(input, '1.1', 120); }
-            }
-        },
-        {
-            selector: '.consolidada-card',
-            titulo: 'Cards de ação',
-            texto: 'Cada card mostra a ação, seu número e o responsável. Cards com marcadores INEP ou iESGo se expandem ao clicar.',
-            acao: () => {
-                _tourClearInputs();
-                // clica no primeiro card que tenha marcadores (header clicável), se houver
-                const clicavel = document.querySelector('.consolidada-header-clicavel');
-                if (clicavel) {
-                    setTimeout(() => {
-                        if (!tourPrimeiraEntradaOverlay) return;
-                        clicavel.click();
-                    }, 900);
-                }
-            }
-        }
-    ];
-
-    // limpar ação anterior
-    _tourClearType();
-
-    const passo = passos[index];
-    const card = tourPrimeiraEntradaOverlay.querySelector('.lite-tour-card');
-    const title = tourPrimeiraEntradaOverlay.querySelector('[data-tour-title]');
-    const text = tourPrimeiraEntradaOverlay.querySelector('[data-tour-text]');
-    const stepLabel = tourPrimeiraEntradaOverlay.querySelector('[data-tour-step]');
-    const progress = tourPrimeiraEntradaOverlay.querySelector('[data-tour-progress]');
-    const spotlight = tourPrimeiraEntradaOverlay.querySelector('.lite-tour-spotlight');
-    const target = obterAlvoTour(passo.selector);
-
-    if (card) card.classList.remove('is-pulse');
-    if (title) title.textContent = passo.titulo;
-    if (text) text.textContent = passo.texto;
-    if (stepLabel) stepLabel.textContent = `${index + 1} de ${passos.length}`;
-    if (progress) progress.style.width = `${((index + 1) / passos.length) * 100}%`;
-
-    document.querySelectorAll('.lite-tour-target-active').forEach(el => el.classList.remove('lite-tour-target-active'));
-
-    if (target) {
-        target.elemento.classList.add('lite-tour-target-active');
-        target.elemento.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        const margem = 14;
-        // Recalcular rect após scroll
-        setTimeout(() => {
-            if (!tourPrimeiraEntradaOverlay) return;
-            const r = target.elemento.getBoundingClientRect();
-            const left = Math.max(8, r.left - margem);
-            const top = Math.max(8, r.top - margem);
-            const width = Math.min(window.innerWidth - left - 8, r.width + (margem * 2));
-            const height = Math.min(window.innerHeight - top - 8, r.height + (margem * 2));
-            spotlight.style.opacity = '1';
-            spotlight.style.left = `${left}px`;
-            spotlight.style.top = `${top}px`;
-            spotlight.style.width = `${Math.max(120, width)}px`;
-            spotlight.style.height = `${Math.max(60, height)}px`;
-        }, 200);
-    } else {
-        spotlight.style.opacity = '0';
-    }
-
-    if (card) {
-        card.classList.add('is-pulse');
-        card.style.opacity = '1';
-    }
-
-    // executar ação interativa do passo (digitar, clicar, etc.)
-    if (passo.acao) passo.acao();
-}
-
-
-
-function iniciarTourPrimeiraEntrada(forcar = false) {
-    if (tourPrimeiraEntradaTimer || tourPrimeiraEntradaIndex >= 0) return;
-    if (!forcar && !tourPrimeiraEntradaForcado() && tourPrimeiraEntradaJaVisto()) return;
-    if (!dadosFiltrados.length || !document.querySelector('.consolidada-card')) return;
-
-    criarTourPrimeiraEntrada();
-    document.body.classList.add('lite-tour-open');
-    tourPrimeiraEntradaOverlay.classList.add('is-visible');
-    tourPrimeiraEntradaIndex = 0;
-    atualizarTourPrimeiraEntrada(tourPrimeiraEntradaIndex);
-
-    const avancar = () => {
-        if (!tourPrimeiraEntradaOverlay) return;
-        tourPrimeiraEntradaIndex += 1;
-        if (tourPrimeiraEntradaIndex >= 4) {
-            encerrarTourPrimeiraEntrada(true);
-            return;
-        }
-        atualizarTourPrimeiraEntrada(tourPrimeiraEntradaIndex);
-        tourPrimeiraEntradaTimer = setTimeout(avancar, TOUR_STEP_DURATION);
-    };
-
-    tourPrimeiraEntradaTimer = setTimeout(avancar, TOUR_STEP_DURATION);
-}
-
-function reposicionarTourPrimeiraEntrada() {
-    if (!tourPrimeiraEntradaOverlay || tourPrimeiraEntradaIndex < 0) return;
-    atualizarTourPrimeiraEntrada(tourPrimeiraEntradaIndex);
-}
-
-function abrirTourPrimeiraEntrada() {
-    encerrarTourPrimeiraEntrada(false);
-
-    // 1. Verifica se os dados do JSON foram carregados na memória.
-    // Se estiver vazio (ex: erro de CORS rodando local), avisa o usuário e nem abre o overlay.
-    if (!dados || dados.length === 0) {
-        alert("Para visualizar o tour, os dados das ações precisam ser carregados primeiro.");
-        return;
-    }
-
-    mostrarTourPreparacao();
-    tourPrimeiraEntradaPendente = true;
-
-    // 2. Se a tela estiver vazia por causa de um filtro ativo, nós LIMPAMOS os filtros 
-    // para forçar a renderização dos cards (em vez de usar apenas aplicarFiltros()).
-    if (!document.querySelector('.consolidada-card')) {
-        limparFiltros(); 
-    }
-
-    // 3. Trava de segurança final: se mesmo limpando não houver card, 
-    // fecha o overlay para não travar a tela e aborta a função.
-    if (!document.querySelector('.consolidada-card')) {
-        encerrarTourPrimeiraEntrada(false);
-        return;
-    }
-
-    tourPrimeiraEntradaPendente = false;
-    iniciarTourPrimeiraEntrada(true);
-}
-
-if (typeof window !== 'undefined') {
-    window.abrirTourPrimeiraEntrada = abrirTourPrimeiraEntrada;
-}
-
 // ── Toggle do painel inline ────────────────────────────────────────────────
 
 function toggleInline(event, id) {
@@ -1133,7 +807,6 @@ function renderizarConsolidadas() {
             const temMarcadores = (Array.isArray(c.inep_detalhes) && c.inep_detalhes.length > 0) ||
                                   (Array.isArray(c.iesgo_detalhes) && c.iesgo_detalhes.length > 0);
             const inlineHtml = renderMarcadoresInline(c);
-            // Os badges popup ficam no meta para o hover; o inline expande dentro do card
             const popupBadgesHtml = renderMarcadoresPopup(c);
 
             return `
@@ -1169,18 +842,12 @@ function renderizarConsolidadas() {
     }).join('');
 
     atualizarEstatisticas();
-    if (tourPrimeiraEntradaPendente && document.querySelector('.consolidada-card')) {
-        tourPrimeiraEntradaPendente = false;
-        setTimeout(() => iniciarTourPrimeiraEntrada(true), 0);
-    }
-    iniciarTourPrimeiraEntrada();
 }
 
 // ── Event listeners ────────────────────────────────────────────────────────
 
 document.getElementById('search').addEventListener('input', aplicarFiltros);
 
-// debounce no input de número para não filtrar a cada letra
 document.getElementById('filter-numero-acao').addEventListener('input', () => {
     clearTimeout(numeroInputTimer);
     numeroInputTimer = setTimeout(aplicarFiltros, 300);
@@ -1203,8 +870,5 @@ document.addEventListener('click', e => {
         document.getElementById('ugDropdownPanel')?.classList.remove('open');
     }
 });
-
-window.addEventListener('resize', reposicionarTourPrimeiraEntrada, { passive: true });
-window.addEventListener('scroll', reposicionarTourPrimeiraEntrada, { passive: true });
 
 inicializar();
